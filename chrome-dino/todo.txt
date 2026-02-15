@@ -1,0 +1,14 @@
+Things to do
+
+
+-> Chrome-dino and make sure its working correctly, and have buttons to restart the game if game over.
+-> implement a neural network which takes in inputs from the game and outputs whether to jump or duck.
+   Input -> NN -> 3 nodes (jump/duck/nothing)
+-> high chances the neural network training will be a pain.. 
+   Sols: Search datasets, or human reinforcement (infeasible) or find a different solution for it.
+-> add genetic algorithm
+    - multiple dinos should be visible during training phase which each representing their own NN.
+    - post training. only one smartest dino(best nn) should be displayed playing the game.
+    - store the best neural network. and also the analytics(as many as possible) during the training.
+    EXTRA: User should be able to intefere between during inference to check how the neural netwrok behaves.
+    (point can be made in research paper too) 
