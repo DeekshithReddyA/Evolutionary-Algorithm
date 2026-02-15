@@ -5,8 +5,6 @@ function App() {
     <>
      <div>
       Home Page
-
-     
       </div> 
     </>
   )
