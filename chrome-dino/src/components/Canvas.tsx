@@ -17,6 +17,7 @@ export const Canvas = () => {
         height: number
     }
     const dogsRef = useRef<Dog[]>([]); // having an array of dogs because in chrome dino we have multiple cacti on the ground not just a single cacti going from right to left.
+
     const nextSpawnTimeRef = useRef(Date.now());
     const lastSpawnTimeRef = useRef(0); // to track last spawn time of dog
 
@@ -33,12 +34,17 @@ export const Canvas = () => {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const velocityRef = useRef(0); //this handles how velocity of cat decreases when reaching top
 
-    /* Reduced the values to smoothen the jumping.
-        Higher values = less frames
-        Lower values = more frames (visually smooth)
-        low delta = low change hence number of re-renders increased, making the car smooth*/
+    const scoreRef = useRef(0);
+    const highScoreRef = useRef(0);
+    const lastFrameTimeRef = useRef(Date.now()); //this was introduced for scoring acc to distance, 
 
-    const jumpStrength = -1.7; // how far we want it to jump when key is pressed, negative means its going up -y means up +y means down
+
+    /* Reduced the values to smoothen the jumping.
+    Higher values = less frames
+    Lower values = more frames (visually smooth)
+    low delta = low change hence number of re-renders increased, making the car smooth*/
+
+    const jumpStrength = -1.5; // how far we want it to jump when key is pressed, negative means its going up -y means up +y means down
     const gravity = 0.01;
 
     useEffect(() => {
@@ -97,6 +103,27 @@ export const Canvas = () => {
 
 
 
+    function isColliding(
+        catX: number,
+        catY: number,
+        catW: number,
+        catH: number,
+        dogX: number,
+        dogY: number,
+        dogW: number,
+        dogH: number
+    ) {
+        return (
+            catX < dogX + dogW &&
+            catX + catW > dogX &&
+            catY < dogY + dogH &&
+            catY + catH > dogY
+        );
+    }
+
+
+
+
     function renderCanvas() {
         console.log("Rendering frame");
         const canvas = canvasRef.current;
@@ -140,6 +167,29 @@ export const Canvas = () => {
             // remove off-screen dogs
             dogsRef.current = dogsRef.current.filter((dog) => dog.xAxis > 280);
         }
+
+        for (let dog of dogsRef.current) {
+            const dogY = groundY - dog.height;
+            const catY = yRef.current;
+            if (isColliding(
+                catX,
+                catY,
+                catWidth,
+                catHeight,
+                dog.xAxis,
+                dogY,
+                dog.width,
+                dog.height
+            )
+            ) {
+                console.log("boom");
+
+                isPlaying.current = false;
+
+                break;
+            }
+        }
+
 
         dogsRef.current.forEach((dog) => {
             ctx.drawImage(

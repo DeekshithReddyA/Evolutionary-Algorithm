@@ -23,4 +23,5 @@ But random spawing function should be improved.
 The way the dogs are being spawned is by checking the time difference between the current time and the last spawn time. 
 If the difference is greater than a random time between minTime and maxTime, a new dog is spawned.
 But the small dog and big dog are being spawned at the same time since only one dog is being rendered,
-the variables are being updated during the render loop, which is causing the bigDawg to become small Dawg and vice versa.
+the variables are being updated during the render loop, which is causing the bigDawg to become small Dawg and vice versa. (Done)
+
