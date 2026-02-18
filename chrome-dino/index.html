@@ -11,3 +11,27 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/public/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>chrome-dino</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="score-bar">
+        <span>Score: <strong id="score">0</strong></span>
+        <span>High Score: <strong id="highScore">0</strong></span>
+      </div>
+      <div class="canvas-wrapper">
+        <canvas id="myCanvas" width="1200" height="500"></canvas>
+      </div>
+      <button id="startBtn" class="start-btn">Start</button>
+    </div>
+
+    <script src="game.js"></script>
+  </body>
+</html>
