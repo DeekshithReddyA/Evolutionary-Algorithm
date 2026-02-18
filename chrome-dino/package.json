@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev": "npx serve ."
+    "dev": "tsc game.ts && npx serve ."
   },
   "devDependencies": {
     "serve": "^14.2.0"
