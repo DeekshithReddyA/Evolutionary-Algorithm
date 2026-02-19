@@ -2,15 +2,20 @@ const GROUND_Y: number = 300;
 const GROUND_X_START: number = 100;
 const GROUND_X_END: number = 800;
 
-const DINO_Y = 250;
+const SMALL_CACTUS_PATH = "/public/1smallCactus.png"
+const BIG_CACTUS_PATH = "/public/1bigcactus.png"
+const THREE_CACTUS_PATH = "/public/3cactus.png"
+
+const OBSTACLE_SPEED = 1;
+const OBSTACLE_SPEED_INCREMENT = 0.01;
 
 const JUMP_STRENGTH = -4.5;
 
 class Dino{
-    x: number = 105;
-    y: number = DINO_Y;
     width: number = 50;
     height: number = 50;
+    x: number = 105;
+    y: number = GROUND_Y - this.height;
     image: HTMLImageElement;
     velocity: number = 0; // negative for upward direction, positive for downward direction
     gravity: number = 0.1; // small intervals to show more re-renders leading to more fps, more fps = more smoothness
@@ -42,10 +47,58 @@ class Dino{
         this.y += this.velocity;
 
         if(this.y >= GROUND_Y - this.height){
-            this.y = DINO_Y;
+            this.y = GROUND_Y - this.height;
             this.jumping = false;
         }
     }
+}
+
+class cactus{
+    x: number;
+    y: number;
+
+    width: number;
+    height: number;
+
+    image: HTMLImageElement;
+
+    constructor(width: number, height: number, image: HTMLImageElement){
+        this.x = GROUND_X_END;
+        this.y = GROUND_Y;
+        
+        this.width = width;
+        this.height = height;
+
+        this.image = image;
+    }
+}
+
+class Obstacle{
+    cactus: cactus
+    constructor(smallCactusImg: HTMLImageElement,
+                bigCactusImg: HTMLImageElement,
+                threeCactusImg: HTMLImageElement){
+        const random = Math.random();
+        if(random <= 0.5) this.cactus = new cactus(50,50, smallCactusImg);
+        else {
+            const r = Math.random();
+
+            if(r <= 0.5) this.cactus = new cactus(100,100, bigCactusImg);
+            else this.cactus = new cactus(100, 100, threeCactusImg);
+        }
+    }
+
+    update(){
+        this.cactus.x -= OBSTACLE_SPEED * OBSTACLE_SPEED_INCREMENT; 
+    }
+
+    isOffScreen(){
+        if(this.cactus.x < GROUND_X_START) return true;
+
+        return false;
+    }
+
+
 }
 
 
@@ -54,13 +107,27 @@ class Game{
     ctx: CanvasRenderingContext2D | null;
     dino: Dino;
     playing: boolean;
-    dino1: Dino;
+    osbstacles: Obstacle[];
+
+    smallCactusImage: HTMLImageElement;
+    bigCactusImage: HTMLImageElement;
+    threeCactusImage: HTMLImageElement;
+
     constructor(){
         this.canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
         this.ctx = this.canvas.getContext("2d");
         this.dino = new Dino();
-        this.dino1 = new Dino();
+        this.osbstacles = [];
         this.playing = false;
+
+        this.smallCactusImage = new Image();
+        this.smallCactusImage.src = SMALL_CACTUS_PATH;
+
+        this.bigCactusImage = new Image();
+        this.bigCactusImage.src = BIG_CACTUS_PATH;
+
+        this.threeCactusImage = new Image();
+        this.threeCactusImage.src = THREE_CACTUS_PATH;
 
         console.log("constructor called");
 
@@ -109,7 +176,7 @@ class Game{
     _waitForImageLoad(){
         console.log("Waiting for image to load");
         let loaded = 0;
-        const total = 2;
+        const total = 4;
         const onLoad = () => {
             loaded++;
             console.log("loaded: ", loaded);
@@ -117,7 +184,9 @@ class Game{
         };
 
         this.dino.image.onload = onLoad;
-        this.dino1.image.onload = onLoad;
+        this.smallCactusImage.onload = onLoad;
+        this.bigCactusImage.onload = onLoad;
+        this.threeCactusImage.onload = onLoad;
     }
 }
 

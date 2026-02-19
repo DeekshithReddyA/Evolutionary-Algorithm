@@ -1,14 +1,17 @@
 var GROUND_Y = 300;
 var GROUND_X_START = 100;
 var GROUND_X_END = 800;
+var SMALL_CACTUS_PATH = "/public/1smallCactus.png";
+var BIG_CACTUS_PATH = "/public/1bigcactus.png";
+var THREE_CACTUS_PATH = "/public/3cactus.png";
 var DINO_Y = 250;
 var JUMP_STRENGTH = -4.5;
 var Dino = /** @class */ (function () {
     function Dino() {
-        this.x = 105;
-        this.y = DINO_Y;
         this.width = 50;
         this.height = 50;
+        this.x = 105;
+        this.y = GROUND_Y - this.height;
         this.velocity = 0; // negative for upward direction, positive for downward direction
         this.gravity = 0.1; // small intervals to show more re-renders leading to more fps, more fps = more smoothness
         this.jumping = false;
@@ -38,6 +41,32 @@ var Dino = /** @class */ (function () {
         }
     };
     return Dino;
+}());
+var cactus = /** @class */ (function () {
+    function cactus(width, height, image) {
+        this.x = GROUND_X_END;
+        this.y = GROUND_Y;
+        this.width = width;
+        this.height = height;
+        this.image = new Image();
+        this.image.src = image;
+    }
+    return cactus;
+}());
+var Obstacle = /** @class */ (function () {
+    function Obstacle() {
+        var random = Math.random();
+        if (random <= 0.5)
+            this.obstacle = new cactus(50, 50, SMALL_CACTUS_PATH);
+        else {
+            var r = Math.random();
+            if (r <= 0.5)
+                this.obstacle = new cactus(100, 100, BIG_CACTUS_PATH);
+            else
+                this.obstacle = new cactus(100, 100, THREE_CACTUS_PATH);
+        }
+    }
+    return Obstacle;
 }());
 var Game = /** @class */ (function () {
     function Game() {
