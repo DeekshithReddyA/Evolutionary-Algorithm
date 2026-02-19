@@ -4,8 +4,11 @@ var GROUND_X_END = 800;
 var SMALL_CACTUS_PATH = "/public/1smallCactus.png";
 var BIG_CACTUS_PATH = "/public/1bigcactus.png";
 var THREE_CACTUS_PATH = "/public/3cactus.png";
-var DINO_Y = 250;
+var OBSTACLE_SPEED = 1.5;
+var OBSTACLE_SPEED_INCREMENT = 0.1;
 var JUMP_STRENGTH = -4.5;
+var SPAWN_MIN_MS = 500;
+var SPAWN_MAX_MS = 1200;
 var Dino = /** @class */ (function () {
     function Dino() {
         this.width = 50;
@@ -36,7 +39,7 @@ var Dino = /** @class */ (function () {
         this.velocity += this.gravity;
         this.y += this.velocity;
         if (this.y >= GROUND_Y - this.height) {
-            this.y = DINO_Y;
+            this.y = GROUND_Y - this.height;
             this.jumping = false;
         }
     };
@@ -45,43 +48,70 @@ var Dino = /** @class */ (function () {
 var cactus = /** @class */ (function () {
     function cactus(width, height, image) {
         this.x = GROUND_X_END;
-        this.y = GROUND_Y;
         this.width = width;
         this.height = height;
-        this.image = new Image();
-        this.image.src = image;
+        this.y = GROUND_Y - this.height;
+        this.image = image;
     }
     return cactus;
 }());
 var Obstacle = /** @class */ (function () {
-    function Obstacle() {
+    function Obstacle(smallCactusImg, bigCactusImg, threeCactusImg) {
         var random = Math.random();
         if (random <= 0.5)
-            this.obstacle = new cactus(50, 50, SMALL_CACTUS_PATH);
+            this.cactus = new cactus(25, 25, smallCactusImg);
         else {
             var r = Math.random();
             if (r <= 0.5)
-                this.obstacle = new cactus(100, 100, BIG_CACTUS_PATH);
+                this.cactus = new cactus(50, 50, bigCactusImg);
             else
-                this.obstacle = new cactus(100, 100, THREE_CACTUS_PATH);
+                this.cactus = new cactus(50, 50, threeCactusImg);
         }
     }
+    Obstacle.prototype.draw = function (ctx) {
+        if (ctx) {
+            ctx.drawImage(this.cactus.image, this.cactus.x, this.cactus.y, this.cactus.width, this.cactus.height);
+        }
+    };
+    Obstacle.prototype.update = function (speed) {
+        this.cactus.x -= speed;
+    };
+    Obstacle.prototype.isOffScreen = function () {
+        if (this.cactus.x < GROUND_X_START)
+            return true;
+        return false;
+    };
     return Obstacle;
 }());
 var Game = /** @class */ (function () {
     function Game() {
+        this.nextSpawnTime = 0;
         this.canvas = document.getElementById("myCanvas");
         this.ctx = this.canvas.getContext("2d");
+        this.startBtn = document.getElementById("startBtn");
         this.dino = new Dino();
-        this.dino1 = new Dino();
+        this.osbstacles = [];
         this.playing = false;
+        this.speed = OBSTACLE_SPEED;
+        this.nextSpawnTime = 0;
+        this.smallCactusImage = new Image();
+        this.smallCactusImage.src = SMALL_CACTUS_PATH;
+        this.bigCactusImage = new Image();
+        this.bigCactusImage.src = BIG_CACTUS_PATH;
+        this.threeCactusImage = new Image();
+        this.threeCactusImage.src = THREE_CACTUS_PATH;
         console.log("constructor called");
         this._waitForImageLoad();
         this._bindInput();
     }
     Game.prototype.start = function () {
-        if (!this.playing) {
-            this.playing = true;
+        this.nextSpawnTime = Date.now();
+        this.osbstacles = [];
+        this.playing = true;
+    };
+    Game.prototype.stop = function () {
+        if (this.playing) {
+            this.playing = false;
         }
     };
     Game.prototype._loop = function () {
@@ -90,8 +120,20 @@ var Game = /** @class */ (function () {
         console.log("inside loop");
         (_a = this.ctx) === null || _a === void 0 ? void 0 : _a.clearRect(0, 0, 800, 500);
         this.drawGround();
+        if (this.playing) {
+            this._trySpawnObject();
+            for (var _i = 0, _b = this.osbstacles; _i < _b.length; _i++) {
+                var obs = _b[_i];
+                obs.update(this.speed);
+            }
+            this.osbstacles = this.osbstacles.filter(function (obs) { return !obs.isOffScreen(); });
+        }
         this.dino.update();
         this.dino.draw(this.ctx);
+        for (var _c = 0, _d = this.osbstacles; _c < _d.length; _c++) {
+            var obs = _d[_c];
+            obs.draw(this.ctx);
+        }
         requestAnimationFrame(function () { return _this._loop(); });
     };
     Game.prototype.drawGround = function () {
@@ -103,6 +145,23 @@ var Game = /** @class */ (function () {
             this.ctx.stroke();
         }
     };
+    Game.prototype._trySpawnObject = function () {
+        console.log("object spawned");
+        var now = Date.now();
+        if (now < this.nextSpawnTime)
+            return;
+        this.speed += OBSTACLE_SPEED_INCREMENT;
+        this.osbstacles.push(new Obstacle(this.smallCactusImage, this.bigCactusImage, this.threeCactusImage));
+        this.nextSpawnTime = now + SPAWN_MIN_MS + Math.random() * (SPAWN_MAX_MS - SPAWN_MIN_MS);
+    };
+    Game.prototype.togglePlay = function () {
+        if (this.playing) {
+            this.stop();
+        }
+        else {
+            this.start();
+        }
+    };
     Game.prototype._bindInput = function () {
         var _this = this;
         window.addEventListener("keydown", function (e) {
@@ -112,12 +171,13 @@ var Game = /** @class */ (function () {
                 _this.dino.jump();
             }
         });
+        this.startBtn.addEventListener("click", function () { return _this.togglePlay(); });
     };
     Game.prototype._waitForImageLoad = function () {
         var _this = this;
         console.log("Waiting for image to load");
         var loaded = 0;
-        var total = 2;
+        var total = 4;
         var onLoad = function () {
             loaded++;
             console.log("loaded: ", loaded);
@@ -125,7 +185,9 @@ var Game = /** @class */ (function () {
                 _this._loop();
         };
         this.dino.image.onload = onLoad;
-        this.dino1.image.onload = onLoad;
+        this.smallCactusImage.onload = onLoad;
+        this.bigCactusImage.onload = onLoad;
+        this.threeCactusImage.onload = onLoad;
     };
     return Game;
 }());

@@ -6,10 +6,13 @@ const SMALL_CACTUS_PATH = "/public/1smallCactus.png"
 const BIG_CACTUS_PATH = "/public/1bigcactus.png"
 const THREE_CACTUS_PATH = "/public/3cactus.png"
 
-const OBSTACLE_SPEED = 1;
-const OBSTACLE_SPEED_INCREMENT = 0.01;
+const OBSTACLE_SPEED = 1.5  ;
+const OBSTACLE_SPEED_INCREMENT = 0.1;
 
 const JUMP_STRENGTH = -4.5;
+
+const SPAWN_MIN_MS = 500;
+const SPAWN_MAX_MS = 1200;
 
 class Dino{
     width: number = 50;
@@ -64,10 +67,9 @@ class cactus{
 
     constructor(width: number, height: number, image: HTMLImageElement){
         this.x = GROUND_X_END;
-        this.y = GROUND_Y;
-        
         this.width = width;
         this.height = height;
+        this.y = GROUND_Y - this.height;
 
         this.image = image;
     }
@@ -79,17 +81,23 @@ class Obstacle{
                 bigCactusImg: HTMLImageElement,
                 threeCactusImg: HTMLImageElement){
         const random = Math.random();
-        if(random <= 0.5) this.cactus = new cactus(50,50, smallCactusImg);
+        if(random <= 0.5) this.cactus = new cactus(25 ,25, smallCactusImg);
         else {
             const r = Math.random();
 
-            if(r <= 0.5) this.cactus = new cactus(100,100, bigCactusImg);
-            else this.cactus = new cactus(100, 100, threeCactusImg);
+            if(r <= 0.5) this.cactus = new cactus(50,50, bigCactusImg);
+            else this.cactus = new cactus(50, 50, threeCactusImg);
         }
     }
 
-    update(){
-        this.cactus.x -= OBSTACLE_SPEED * OBSTACLE_SPEED_INCREMENT; 
+    draw(ctx: CanvasRenderingContext2D | null){
+        if(ctx){
+            ctx.drawImage(this.cactus.image, this.cactus.x, this.cactus.y, this.cactus.width, this.cactus.height);
+        }
+    }
+
+    update(speed: number){
+        this.cactus.x -= speed; 
     }
 
     isOffScreen(){
@@ -105,20 +113,28 @@ class Obstacle{
 class Game{    
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D | null;
+    startBtn: HTMLButtonElement;
     dino: Dino;
     playing: boolean;
     osbstacles: Obstacle[];
+    speed: number;
 
     smallCactusImage: HTMLImageElement;
     bigCactusImage: HTMLImageElement;
     threeCactusImage: HTMLImageElement;
 
+    nextSpawnTime = 0
+
     constructor(){
         this.canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
         this.ctx = this.canvas.getContext("2d");
+        this.startBtn = document.getElementById("startBtn") as HTMLButtonElement;
         this.dino = new Dino();
         this.osbstacles = [];
         this.playing = false;
+        this.speed = OBSTACLE_SPEED;
+
+        this.nextSpawnTime = 0;
 
         this.smallCactusImage = new Image();
         this.smallCactusImage.src = SMALL_CACTUS_PATH;
@@ -136,8 +152,13 @@ class Game{
     }
 
     start(){
-        if(!this.playing){
-            this.playing = true;
+        this.nextSpawnTime = Date.now();
+        this.osbstacles = [];
+        this.playing = true;
+    }
+    stop(){
+        if(this.playing){
+            this.playing = false;
         }
     }
     
@@ -145,8 +166,26 @@ class Game{
         console.log("inside loop");
         this.ctx?.clearRect(0,0,800,500);
         this.drawGround();
+
+        
+        if(this.playing){
+            this._trySpawnObject();
+            
+            for(const obs of this.osbstacles){
+                obs.update(this.speed);
+            }
+            
+            this.osbstacles = this.osbstacles.filter((obs) => !obs.isOffScreen());
+        }
+        
         this.dino.update();
         this.dino.draw(this.ctx);
+        
+        for(const obs of this.osbstacles){
+            obs.draw(this.ctx);
+        }
+        
+        
         requestAnimationFrame(()=>this._loop());
     }
     
@@ -162,6 +201,27 @@ class Game{
         }
     }
 
+    _trySpawnObject(){
+        console.log("object spawned");
+        const now = Date.now();
+        
+        if(now < this.nextSpawnTime) return;
+        
+        this.speed += OBSTACLE_SPEED_INCREMENT;
+        
+        this.osbstacles.push(new Obstacle(this.smallCactusImage, this.bigCactusImage, this.threeCactusImage));
+        this.nextSpawnTime = now + SPAWN_MIN_MS + Math.random() * (SPAWN_MAX_MS - SPAWN_MIN_MS);
+
+    }
+
+    togglePlay(){
+        if(this.playing){
+            this.stop();
+        } else {
+            this.start();
+        }
+    }
+
 
     _bindInput(){
         window.addEventListener("keydown", (e) => {
@@ -171,6 +231,8 @@ class Game{
                 this.dino.jump();
             }
         });
+
+        this.startBtn.addEventListener("click", ()=>this.togglePlay());
     }
     
     _waitForImageLoad(){
