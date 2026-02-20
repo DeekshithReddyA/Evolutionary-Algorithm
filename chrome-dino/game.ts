@@ -1,6 +1,6 @@
 const GROUND_Y: number = 300;
 const GROUND_X_START: number = 80;
-const GROUND_X_END: number = 840;
+const GROUND_X_END: number = 800;
 
 const SMALL_CACTUS_PATH = "/1smallCactus.png"
 const BIG_CACTUS_PATH = "/1bigcactus.png"
@@ -9,14 +9,11 @@ const THREE_CACTUS_PATH = "/3cactus.png"
 const OBSTACLE_SPEED = 1.5;
 const OBSTACLE_SPEED_INCREMENT = 0.1;
 
-const MIN_OBSTACLE_GAP = 150;
-const MAX_OBSTACLE_GAP = 250;
+const MIN_OBSTACLE_GAP = 200;
+const MAX_OBSTACLE_GAP = 400;
 
 
 const JUMP_STRENGTH = -4.5;
-
-const SPAWN_MIN_MS = 500;
-const SPAWN_MAX_MS = 1200;
 
 class Dino {
     width: number = 50;
@@ -70,7 +67,7 @@ class cactus {
     image: HTMLImageElement;
 
     constructor(width: number, height: number, image: HTMLImageElement , x? : number) {
-        this.x = x ?? GROUND_X_END + 300;
+        this.x =GROUND_X_END;
         this.width = width;
         this.height = height;
         this.y = GROUND_Y - this.height;
@@ -85,11 +82,11 @@ class Obstacle {
         threeCactusImg: HTMLImageElement,
         spawnX?: number) {
         const random = Math.random();
-        if (random <= 0.5) this.cactus = new cactus(25, 25, smallCactusImg,spawnX);
+        if (random <= 0.5) this.cactus = new cactus(20, 25, smallCactusImg,spawnX);
         else {
             const r = Math.random();
 
-            if (r <= 0.5) this.cactus = new cactus(50, 50, bigCactusImg,spawnX);
+            if (r <= 0.5) this.cactus = new cactus(40, 50, bigCactusImg,spawnX);
             else this.cactus = new cactus(50, 50, threeCactusImg,spawnX);
         }
     }
@@ -168,7 +165,7 @@ class Game {
 
     _loop() {
         console.log("inside loop");
-        this.ctx?.clearRect(0, 0, 800, 500);
+        this.ctx?.clearRect(0, 0, 900, 500);
         this.drawGround();
 
 
@@ -202,11 +199,12 @@ class Game {
             this.ctx.strokeStyle = 'black'
             this.ctx.moveTo(GROUND_X_START, GROUND_Y);
             this.ctx.lineTo(GROUND_X_END, GROUND_Y);
+            this.ctx.closePath();
             this.ctx.stroke();
 
         }
     }
-
+    // Spawn gap based on speed. 
     _trySpawnObject() {
         console.log("object spawned");
         const lastCacti = this.obstacles[this.obstacles.length - 1];
@@ -219,7 +217,7 @@ class Game {
             this.nextSpawnGap = MIN_OBSTACLE_GAP + Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP)  ;
             return;
         }
-        const distance = lastCacti.cactus.x - this.dino.x;
+        const distance = GROUND_X_END - lastCacti.cactus.x;
 
         if (distance < this.nextSpawnGap) return;
 
@@ -238,9 +236,6 @@ class Game {
         this.nextSpawnGap =
             MIN_OBSTACLE_GAP +
             Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP);
-    
-
-
 }
 
 
