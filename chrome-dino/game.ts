@@ -22,7 +22,7 @@ class Dino {
     y: number = GROUND_Y - this.height;
     image: HTMLImageElement;
     velocity: number = 0; // negative for upward direction, positive for downward direction
-    gravity: number = 0.15; // small intervals to show more re-renders leading to more fps, more fps = more smoothness
+    gravity: number = 0.12; // small intervals to show more re-renders leading to more fps, more fps = more smoothness
     jumping: boolean = false;
 
     constructor() {
@@ -66,8 +66,8 @@ class cactus {
 
     image: HTMLImageElement;
 
-    constructor(width: number, height: number, image: HTMLImageElement , x? : number) {
-        this.x =GROUND_X_END;
+    constructor(width: number, height: number, image: HTMLImageElement, x?: number) {
+        this.x = GROUND_X_END;
         this.width = width;
         this.height = height;
         this.y = GROUND_Y - this.height;
@@ -82,12 +82,12 @@ class Obstacle {
         threeCactusImg: HTMLImageElement,
         spawnX?: number) {
         const random = Math.random();
-        if (random <= 0.5) this.cactus = new cactus(20, 25, smallCactusImg,spawnX);
+        if (random <= 0.5) this.cactus = new cactus(20, 25, smallCactusImg, spawnX);
         else {
             const r = Math.random();
 
-            if (r <= 0.5) this.cactus = new cactus(40, 50, bigCactusImg,spawnX);
-            else this.cactus = new cactus(50, 50, threeCactusImg,spawnX);
+            if (r <= 0.5) this.cactus = new cactus(40, 50, bigCactusImg, spawnX);
+            else this.cactus = new cactus(50, 50, threeCactusImg, spawnX);
         }
     }
 
@@ -168,40 +168,47 @@ class Game {
         this.ctx?.clearRect(0, 0, 900, 500);
         this.drawGround();
 
-        
+
         if (this.playing) {
-            this.speed += OBSTACLE_SPEED_INCREMENT; //adding speed in game loop to avoid jump in speed wrt every obstacle appearing which wont help in NN training        
+            this.speed += OBSTACLE_SPEED_INCREMENT;
             this._trySpawnObject();
-            
+
             for (const obs of this.obstacles) {
                 obs.update(this.speed);
             }
-            
+            for (const obs of this.obstacles) {
+                if (this._isColliding(this.dino, obs)) {
+                    console.log("GAME OVER");
+                    this.stop();
+                    break;
+                }
+            }
+
             this.obstacles = this.obstacles.filter((obs) => !obs.isOffScreen());
         }
-        
+
         this.dino.update();
         this.dino.draw(this.ctx);
-        
+
         for (const obs of this.obstacles) {
             obs.draw(this.ctx);
         }
-        
-        
+
+
         requestAnimationFrame(() => this._loop());
     }
-    
+
     drawGround() {
         if (this.ctx) {
             // ctx.lineWidth = 5;
-            
+
             this.ctx.beginPath();
             this.ctx.strokeStyle = 'black'
             this.ctx.moveTo(GROUND_X_START, GROUND_Y);
             this.ctx.lineTo(GROUND_X_END, GROUND_Y);
             this.ctx.closePath();
             this.ctx.stroke();
-            
+
         }
     }
     // Spawn gap based on speed. 
@@ -214,7 +221,7 @@ class Game {
                 this.bigCactusImage,
                 this.threeCactusImage
             ));
-            this.nextSpawnGap = MIN_OBSTACLE_GAP + Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP)  ;
+            this.nextSpawnGap = MIN_OBSTACLE_GAP + Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP);
             return;
         }
         const distance = GROUND_X_END - lastCacti.cactus.x;
@@ -236,45 +243,53 @@ class Game {
         this.nextSpawnGap =
             MIN_OBSTACLE_GAP +
             Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP);
-}
-
-
-togglePlay() {
-    if (this.playing) {
-        this.stop();
-    } else {
-        this.start();
     }
-}
+    _isColliding(dino: Dino, obs: Obstacle): boolean {
+        return (
+            dino.x < obs.cactus.x + obs.cactus.width &&
+            dino.x + dino.width > obs.cactus.x &&
+            dino.y < obs.cactus.y + obs.cactus.height &&
+            dino.y + dino.height > obs.cactus.y
+        );
+    }
 
 
-_bindInput() {
-    window.addEventListener("keydown", (e) => {
-        if (e.code === "Space" || e.code === "ArrowUp") {
-            console.log("jump");
-            e.preventDefault();
-            this.dino.jump();
+    togglePlay() {
+        if (this.playing) {
+            this.stop();
+        } else {
+            this.start();
         }
-    });
+    }
 
-    this.startBtn.addEventListener("click", () => this.togglePlay());
-}
 
-_waitForImageLoad() {
-    console.log("Waiting for image to load");
-    let loaded = 0;
-    const total = 4;
-    const onLoad = () => {
-        loaded++;
-        console.log("loaded: ", loaded);
-        if (loaded === total) this._loop();
-    };
+    _bindInput() {
+        window.addEventListener("keydown", (e) => {
+            if (e.code === "Space" || e.code === "ArrowUp") {
+                console.log("jump");
+                e.preventDefault();
+                this.dino.jump();
+            }
+        });
 
-    this.dino.image.onload = onLoad;
-    this.smallCactusImage.onload = onLoad;
-    this.bigCactusImage.onload = onLoad;
-    this.threeCactusImage.onload = onLoad;
-}
+        this.startBtn.addEventListener("click", () => this.togglePlay());
+    }
+
+    _waitForImageLoad() {
+        console.log("Waiting for image to load");
+        let loaded = 0;
+        const total = 4;
+        const onLoad = () => {
+            loaded++;
+            console.log("loaded: ", loaded);
+            if (loaded === total) this._loop();
+        };
+
+        this.dino.image.onload = onLoad;
+        this.smallCactusImage.onload = onLoad;
+        this.bigCactusImage.onload = onLoad;
+        this.threeCactusImage.onload = onLoad;
+    }
 }
 
 const game = new Game();
