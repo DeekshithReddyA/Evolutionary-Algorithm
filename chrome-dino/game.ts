@@ -6,23 +6,23 @@ const SMALL_CACTUS_PATH = "/1smallCactus.png"
 const BIG_CACTUS_PATH = "/1bigcactus.png"
 const THREE_CACTUS_PATH = "/3cactus.png"
 
-const OBSTACLE_SPEED = 1.5;
-const OBSTACLE_SPEED_INCREMENT = 0.1;
+const OBSTACLE_SPEED = 1.6;
+const OBSTACLE_SPEED_INCREMENT = 0.00035;
 
 const MIN_OBSTACLE_GAP = 200;
 const MAX_OBSTACLE_GAP = 400;
 
 
-const JUMP_STRENGTH = -4.5;
+const JUMP_STRENGTH = -5;
 
 class Dino {
     width: number = 50;
     height: number = 50;
-    x: number = 105;
+    x: number = 90;
     y: number = GROUND_Y - this.height;
     image: HTMLImageElement;
     velocity: number = 0; // negative for upward direction, positive for downward direction
-    gravity: number = 0.1; // small intervals to show more re-renders leading to more fps, more fps = more smoothness
+    gravity: number = 0.15; // small intervals to show more re-renders leading to more fps, more fps = more smoothness
     jumping: boolean = false;
 
     constructor() {
@@ -168,40 +168,40 @@ class Game {
         this.ctx?.clearRect(0, 0, 900, 500);
         this.drawGround();
 
-
+        
         if (this.playing) {
-            this.speed += 0.0005; //adding speed in game loop to avoid jump in speed wrt every obstacle appearing which wont help in NN training        
+            this.speed += OBSTACLE_SPEED_INCREMENT; //adding speed in game loop to avoid jump in speed wrt every obstacle appearing which wont help in NN training        
             this._trySpawnObject();
-
+            
             for (const obs of this.obstacles) {
                 obs.update(this.speed);
             }
-
+            
             this.obstacles = this.obstacles.filter((obs) => !obs.isOffScreen());
         }
-
+        
         this.dino.update();
         this.dino.draw(this.ctx);
-
+        
         for (const obs of this.obstacles) {
             obs.draw(this.ctx);
         }
-
-
+        
+        
         requestAnimationFrame(() => this._loop());
     }
-
+    
     drawGround() {
         if (this.ctx) {
             // ctx.lineWidth = 5;
-
+            
             this.ctx.beginPath();
             this.ctx.strokeStyle = 'black'
             this.ctx.moveTo(GROUND_X_START, GROUND_Y);
             this.ctx.lineTo(GROUND_X_END, GROUND_Y);
             this.ctx.closePath();
             this.ctx.stroke();
-
+            
         }
     }
     // Spawn gap based on speed. 

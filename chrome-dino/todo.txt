@@ -12,3 +12,9 @@ Things to do
     - store the best neural network. and also the analytics(as many as possible) during the training.
     EXTRA: User should be able to intefere between during inference to check how the neural netwrok behaves.
     (point can be made in research paper too) 
+
+
+
+Fixes to make:
+-> fix min distance and max distance and tune them according to the speed too.
+-> 
