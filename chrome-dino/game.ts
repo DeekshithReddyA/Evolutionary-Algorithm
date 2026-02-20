@@ -1,10 +1,10 @@
 const GROUND_Y: number = 300;
-const GROUND_X_START: number = 100;
-const GROUND_X_END: number = 800;
+const GROUND_X_START: number = 80;
+const GROUND_X_END: number = 840;
 
-const SMALL_CACTUS_PATH = "/public/1smallCactus.png"
-const BIG_CACTUS_PATH = "/public/1bigcactus.png"
-const THREE_CACTUS_PATH = "/public/3cactus.png"
+const SMALL_CACTUS_PATH = "/1smallCactus.png"
+const BIG_CACTUS_PATH = "/1bigcactus.png"
+const THREE_CACTUS_PATH = "/3cactus.png"
 
 const OBSTACLE_SPEED = 1.5  ;
 const OBSTACLE_SPEED_INCREMENT = 0.1;
@@ -26,7 +26,7 @@ class Dino{
 
     constructor(){
         this.image = new Image();
-        this.image.src = "/public/dino.png";
+        this.image.src = "/dino.png";
     }
 
     draw(ctx: CanvasRenderingContext2D | null){
@@ -66,7 +66,7 @@ class cactus{
     image: HTMLImageElement;
 
     constructor(width: number, height: number, image: HTMLImageElement){
-        this.x = GROUND_X_END;
+        this.x = GROUND_X_END + 150;
         this.width = width;
         this.height = height;
         this.y = GROUND_Y - this.height;
@@ -101,7 +101,7 @@ class Obstacle{
     }
 
     isOffScreen(){
-        if(this.cactus.x < GROUND_X_START) return true;
+        if(this.cactus.x + this.cactus.width < GROUND_X_START) return true;
 
         return false;
     }
