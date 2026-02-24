@@ -45,3 +45,103 @@ body {
 .start-btn:hover {
   background-color: #94a3b8;
 }
+
+/* Utility */
+.hidden {
+  display: none !important;
+}
+
+/* Home Screen */
+.home-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 1.5rem;
+}
+
+.game-title {
+  font-family: 'Courier New', monospace;
+  font-size: 2.8rem;
+  letter-spacing: 2px;
+  color: #535353;
+}
+
+.game-subtitle {
+  font-family: sans-serif;
+  font-size: 1.1rem;
+  color: #888;
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.5rem 2rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 140px;
+}
+
+.mode-btn:hover {
+  border-color: #535353;
+  background: #f1f5f9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.mode-icon {
+  font-size: 2rem;
+}
+
+.mode-label {
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #535353;
+}
+
+/* Top bar with back button, scores, and mode label */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 900px;
+  padding-top: 1.5rem;
+}
+
+.back-btn {
+  cursor: pointer;
+  background: none;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.9rem;
+  color: #535353;
+  font-family: sans-serif;
+}
+
+.back-btn:hover {
+  background: #f1f5f9;
+  border-color: #535353;
+}
+
+.mode-display {
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  color: #535353;
+  background: #f1f5f9;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.5rem;
+}

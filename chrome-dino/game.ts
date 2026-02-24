@@ -1,3 +1,5 @@
+import {AI, NEAT, NN, RL} from "./brain";
+
 const GROUND_Y: number = 300;
 const GROUND_X_START: number = 80;
 const GROUND_X_END: number = 800;
@@ -18,6 +20,17 @@ const MAX_OBSTACLE_GAP = 400;
 const COLLISION_MARGIN = 5; // Pixels to shrink collision box for tighter detection
 
 const JUMP_STRENGTH = -5;
+
+
+//Factory method
+class AIFactory{
+    getAI(aiType: string): AI{
+        if(aiType === "NN") return new NN();
+        else if(aiType === "NEAT") return new NEAT();
+        else return new RL();
+    }
+}
+
 
 class Dino {
     width: number = 50;
@@ -315,4 +328,40 @@ class Game {
     }
 }
 
-const game = new Game();
+// --- Home / Game screen navigation ---
+const homeScreen = document.getElementById("homeScreen") as HTMLDivElement;
+const gameScreen = document.getElementById("gameScreen") as HTMLDivElement;
+const modeDisplay = document.getElementById("modeDisplay") as HTMLSpanElement;
+const backBtn = document.getElementById("backBtn") as HTMLButtonElement;
+
+let selectedMode: string = "user";
+let game: Game | null = null;
+
+const MODE_LABELS: Record<string, string> = {
+  user: "User",
+  neural: "Neural Network",
+  neat: "NEAT",
+  rl: "RL",
+};
+
+document.querySelectorAll(".mode-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    selectedMode = (btn as HTMLElement).dataset.mode || "user";
+    modeDisplay.textContent = `Mode: ${MODE_LABELS[selectedMode]}`;
+    homeScreen.classList.add("hidden");
+    gameScreen.classList.remove("hidden");
+
+    // Create the game instance only when entering the game screen
+    if (!game) {
+      game = new Game();
+    }
+  });
+});
+
+backBtn.addEventListener("click", () => {
+  if (game) {
+    game.stop();
+  }
+  gameScreen.classList.add("hidden");
+  homeScreen.classList.remove("hidden");
+});
