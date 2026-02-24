@@ -7,11 +7,12 @@ const BIG_CACTUS_PATH = "/1bigcactus.png"
 const THREE_CACTUS_PATH = "/3cactus.png"
 
 const OBSTACLE_SPEED = 1.6;
-const OBSTACLE_SPEED_INCREMENT = 0.00035;
+const OBSTACLE_SPEED_INCREMENT = 0.00045;
+const OBSTACLE_MAX_SPEED = 5;
 
 const SCORE_INCREMENT = 0.1;
 
-const MIN_OBSTACLE_GAP = 200;
+const MIN_OBSTACLE_GAP = 150;
 const MAX_OBSTACLE_GAP = 400;
 
 const COLLISION_MARGIN = 5; // Pixels to shrink collision box for tighter detection
@@ -165,6 +166,7 @@ class Game {
         this.playing = true;
         this.startBtn.innerText = "Stop";
         this.score = 0;
+        this.speed = OBSTACLE_SPEED;
     }
     stop() {
         if (this.playing) {
@@ -181,11 +183,15 @@ class Game {
 
 
         if (this.playing) {
-            this.speed += OBSTACLE_SPEED_INCREMENT;
+            if(this.speed < OBSTACLE_MAX_SPEED)
+                this.speed += OBSTACLE_SPEED_INCREMENT;
+            
             this.score += this.speed * 0.05;
             this.scoreElement.innerText = Math.trunc(this.score).toString();
+            
             // console.log(this.score);
             console.log(this.speed);
+            
             this._trySpawnObject();
 
             for (const obs of this.obstacles) {
@@ -235,7 +241,8 @@ class Game {
                 this.bigCactusImage,
                 this.threeCactusImage
             ));
-            this.nextSpawnGap = MIN_OBSTACLE_GAP + Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP);
+            const speedRatio = this.speed / OBSTACLE_SPEED;
+            this.nextSpawnGap = speedRatio * (MIN_OBSTACLE_GAP + Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP));
             return;
         }
         const distance = GROUND_X_END - lastCacti.cactus.x;
@@ -253,10 +260,11 @@ class Game {
             )
         );
 
-        //next random gap
+        //next random gap (scaled by speed)
+        const speedRatio = this.speed / OBSTACLE_SPEED;
         this.nextSpawnGap =
-            MIN_OBSTACLE_GAP +
-            Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP);
+            speedRatio * (MIN_OBSTACLE_GAP +
+            Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP));
     }
 
     _isColliding(dino: Dino, obs: Obstacle): boolean {
