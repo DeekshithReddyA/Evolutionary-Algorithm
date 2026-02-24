@@ -9,9 +9,12 @@ const THREE_CACTUS_PATH = "/3cactus.png"
 const OBSTACLE_SPEED = 1.6;
 const OBSTACLE_SPEED_INCREMENT = 0.00035;
 
+const SCORE_INCREMENT = 0.1;
+
 const MIN_OBSTACLE_GAP = 200;
 const MAX_OBSTACLE_GAP = 400;
 
+const COLLISION_MARGIN = 5; // Pixels to shrink collision box for tighter detection
 
 const JUMP_STRENGTH = -5;
 
@@ -42,7 +45,6 @@ class Dino {
             this.jumping = true;
             this.velocity = JUMP_STRENGTH;
         }
-        console.log(this.y);
     }
 
     update() {
@@ -119,6 +121,9 @@ class Game {
     playing: boolean;
     obstacles: Obstacle[];
     speed: number;
+    score: number;
+    scoreElement : HTMLDivElement;
+    highScoreElement : HTMLDivElement;
 
     smallCactusImage: HTMLImageElement;
     bigCactusImage: HTMLImageElement;
@@ -130,10 +135,13 @@ class Game {
         this.canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
         this.ctx = this.canvas.getContext("2d");
         this.startBtn = document.getElementById("startBtn") as HTMLButtonElement;
+        this.scoreElement = document.getElementById("score") as HTMLDivElement;
+        this.highScoreElement = document.getElementById("highScore") as HTMLDivElement;
         this.dino = new Dino();
         this.obstacles = [];
         this.playing = false;
         this.speed = OBSTACLE_SPEED;
+        this.score = 0;
 
 
         this.nextSpawnGap = MIN_OBSTACLE_GAP;
@@ -147,7 +155,6 @@ class Game {
         this.threeCactusImage = new Image();
         this.threeCactusImage.src = THREE_CACTUS_PATH;
 
-        console.log("constructor called");
 
         this._waitForImageLoad();
         this._bindInput();
@@ -156,21 +163,29 @@ class Game {
     start() {
         this.obstacles = [];
         this.playing = true;
+        this.startBtn.innerText = "Stop";
+        this.score = 0;
     }
     stop() {
         if (this.playing) {
             this.playing = false;
+            this.startBtn.innerText = "Start";
+            const highScore = parseInt(this.highScoreElement.innerText);
+            this.highScoreElement.innerText = Math.trunc(Math.max(highScore, this.score)).toString();
         }
     }
 
     _loop() {
-        console.log("inside loop");
         this.ctx?.clearRect(0, 0, 900, 500);
         this.drawGround();
 
 
         if (this.playing) {
             this.speed += OBSTACLE_SPEED_INCREMENT;
+            this.score += this.speed * 0.05;
+            this.scoreElement.innerText = Math.trunc(this.score).toString();
+            // console.log(this.score);
+            console.log(this.speed);
             this._trySpawnObject();
 
             for (const obs of this.obstacles) {
@@ -213,7 +228,6 @@ class Game {
     }
     // Spawn gap based on speed. 
     _trySpawnObject() {
-        console.log("object spawned");
         const lastCacti = this.obstacles[this.obstacles.length - 1];
         if (!lastCacti) {
             this.obstacles.push(new Obstacle(
@@ -244,12 +258,13 @@ class Game {
             MIN_OBSTACLE_GAP +
             Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP);
     }
+
     _isColliding(dino: Dino, obs: Obstacle): boolean {
         return (
-            dino.x < obs.cactus.x + obs.cactus.width &&
-            dino.x + dino.width > obs.cactus.x &&
-            dino.y < obs.cactus.y + obs.cactus.height &&
-            dino.y + dino.height > obs.cactus.y
+            dino.x + COLLISION_MARGIN < obs.cactus.x + obs.cactus.width - COLLISION_MARGIN &&
+            dino.x + dino.width - COLLISION_MARGIN > obs.cactus.x + COLLISION_MARGIN &&
+            dino.y + COLLISION_MARGIN < obs.cactus.y + obs.cactus.height - COLLISION_MARGIN &&
+            dino.y + dino.height - COLLISION_MARGIN > obs.cactus.y + COLLISION_MARGIN
         );
     }
 
