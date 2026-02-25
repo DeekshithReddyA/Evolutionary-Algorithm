@@ -75,4 +75,61 @@ export class NeuralNetwork {
 
         return x;
     }
+
+    clone(){
+        //deep copy
+        const cloneNN = new NeuralNetwork(this.layerSizes);
+        for(let i = 0; i < this.weights.length; i++){
+            for(let j = 0; j < this.weights[i].length; j++){
+                for(let k = 0; k < this.weights[i][j].length; k++){
+                    cloneNN.weights[i][j][k] = this.weights[i][j][k];
+                }
+            }
+        }
+
+        for(let i = 0; i < this.bias.length; i++){
+            for(let j = 0; j < this.bias[i].length; j++){
+                cloneNN.bias[i][j] = this.bias[i][j];
+            }
+        }
+
+        return cloneNN;
+    }
+
+    mutate(rate: number, strength: number): void {
+        for(let i = 0; i < this.weights.length; i++){
+            for(let j = 0; j < this.weights[i].length; j++){
+                for(let k = 0; k < this.weights[i][j].length; k++){
+                    if(Math.random() < rate){
+                        this.weights[i][j][k] += (Math.random() * 2 - 1) * strength;
+                    }
+                }
+            }
+        }
+
+        for(let i = 0; i < this.bias.length; i++){
+            for(let j = 0; j < this.bias[i].length; j++){
+                if(Math.random() < rate){
+                    this.bias[i][j] += (Math.random() * 2 - 1) * strength;
+                }
+            }
+        }
+    }
+
+    toJson(): string { 
+        return JSON.stringify(
+            {
+            layerSizes: this.layerSizes,
+            weights: this.weights,
+            bias: this.bias
+        });
+    }
+
+    static fromJson(json: string): NeuralNetwork {
+        const data = JSON.parse(json);
+        const nn = new NeuralNetwork(data.layerSizes);
+        nn.weights = data.weights;
+        nn.bias = data.bias;
+        return nn;
+    }
 }
