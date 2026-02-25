@@ -1,0 +1,224 @@
+// ──────────────────────────────────────────────
+//  Game engine – mode-agnostic, multi-dino
+// ──────────────────────────────────────────────
+import {
+  CANVAS_W, CANVAS_H,
+  GROUND_Y, GROUND_X_START, GROUND_X_END,
+  OBSTACLE_SPEED, OBSTACLE_SPEED_INCREMENT, OBSTACLE_MAX_SPEED,
+  MIN_OBSTACLE_GAP, MAX_OBSTACLE_GAP,
+  COLLISION_MARGIN,
+} from './constants.js';
+import { Obstacle } from './obstacle.js';
+
+export class GameEngine {
+  constructor(canvasId) {
+    this.canvas = document.getElementById(canvasId);
+    this.ctx    = this.canvas.getContext('2d');
+
+    this.dinos         = [];
+    this.obstacles      = [];
+    this.speed          = OBSTACLE_SPEED;
+    this.nextSpawnGap   = MIN_OBSTACLE_GAP;
+    this.score          = 0;
+    this.frameCount     = 0;
+    this.running        = false;
+    this.animFrameId    = null;
+
+    /** Optional overlay text drawn top-right of canvas (set by mode). */
+    this.overlayText = '';
+
+    // ── callbacks (set by the active mode) ──
+    this.onAllDead = null;
+    this.onUpdate  = null;
+  }
+
+  setDinos(dinos) { this.dinos = dinos; }
+
+  start() {
+    if (this.running) return;
+
+    this.obstacles     = [];
+    this.score         = 0;
+    this.frameCount    = 0;
+    this.speed         = OBSTACLE_SPEED;
+    this.nextSpawnGap  = MIN_OBSTACLE_GAP;
+    this.running       = true;
+
+    for (const d of this.dinos) d.reset();
+    this._loop();
+  }
+
+  stop() {
+    this.running = false;
+    if (this.animFrameId) {
+      cancelAnimationFrame(this.animFrameId);
+      this.animFrameId = null;
+    }
+  }
+
+  getAliveCount() {
+    return this.dinos.filter(d => d.alive).length;
+  }
+
+  // ── game-state vector for AI ───────────────
+  getGameState(dino) {
+    const next   = this._nextObstacle(dino);
+    const second = this._secondObstacle(dino);
+
+    return [
+      dino.y / CANVAS_H,                                            // 0  Dino Y
+      dino.velocity / 5,                                             // 1  Velocity
+      dino.jumping ? 1 : 0,                                         // 2  Is jumping
+      next   ? (next.x - dino.x) / CANVAS_W           : 1,          // 3  Dist → obs 1
+      next   ? next.height / CANVAS_H                 : 0,          // 4  Obs 1 height
+      next   ? next.width  / CANVAS_W                 : 0,          // 5  Obs 1 width
+      second ? (second.x - dino.x) / CANVAS_W         : 1,          // 6  Dist → obs 2
+      second ? second.height / CANVAS_H               : 0,          // 7  Obs 2 height
+      (next && second)
+        ? (second.x - (next.x + next.width)) / CANVAS_W : 1,        // 8  Gap
+      this.speed / 10,                                               // 9  Speed (dynamic)
+    ];
+  }
+
+  // ── obstacle helpers ───────────────────────
+  _nextObstacle(dino) {
+    let best = null, bestD = Infinity;
+    for (const o of this.obstacles) {
+      const d = o.x + o.width - dino.x;
+      if (d > 0 && d < bestD) { bestD = d; best = o; }
+    }
+    return best;
+  }
+
+  _secondObstacle(dino) {
+    const sorted = this.obstacles
+      .filter(o => o.x + o.width - dino.x > 0)
+      .sort((a, b) => a.x - b.x);
+    return sorted[1] || null;
+  }
+
+  _trySpawn() {
+    if (this.obstacles.length === 0) {
+      this.obstacles.push(new Obstacle());
+      this._setNextGap();
+      return;
+    }
+    const lastObs = this.obstacles[this.obstacles.length - 1];
+    const traveled = CANVAS_W - lastObs.x;
+    if (traveled >= this.nextSpawnGap) {
+      this.obstacles.push(new Obstacle());
+      this._setNextGap();
+    }
+  }
+
+  /** Compute next spawn gap, scaling with speed so time-gap stays roughly constant. */
+  _setNextGap() {
+    const speedRatio = this.speed / OBSTACLE_SPEED;
+    this.nextSpawnGap = speedRatio *
+      (MIN_OBSTACLE_GAP + Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP));
+  }
+
+  // ── collision (AABB with margin) ────────────
+  _collides(dino) {
+    const m = COLLISION_MARGIN;
+    for (const o of this.obstacles) {
+      if (dino.x + m < o.x + o.width - m  &&
+          dino.x + dino.width - m > o.x + m &&
+          dino.y + m < o.y + o.height - m  &&
+          dino.y + dino.height - m > o.y + m) return true;
+    }
+    return false;
+  }
+
+  // ── drawing ────────────────────────────────
+  _drawGround() {
+    const { ctx } = this;
+    ctx.beginPath();
+    ctx.moveTo(GROUND_X_START, GROUND_Y);
+    ctx.lineTo(GROUND_X_END, GROUND_Y);
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth   = 2;
+    ctx.stroke();
+  }
+
+  // ── main loop ──────────────────────────────
+  _loop() {
+    if (!this.running) return;
+
+    const { ctx, canvas } = this;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    this._drawGround();
+
+    // spawn & move obstacles
+    this._trySpawn();
+    for (const o of this.obstacles) o.update(this.speed);
+    this.obstacles = this.obstacles.filter(o => !o.isOffScreen());
+
+    // speed ramp-up
+    if (this.speed < OBSTACLE_MAX_SPEED) {
+      this.speed += OBSTACLE_SPEED_INCREMENT;
+    }
+
+    // score (increases with speed)
+    this.frameCount++;
+    this.score += this.speed * 0.05;
+
+    // alpha for swarm rendering
+    const alpha = this.dinos.length > 1 ? 0.45 : 1;
+
+    // update each dino
+    for (const dino of this.dinos) {
+      if (!dino.alive) continue;
+
+      // AI decision
+      if (dino.brain) {
+        const state = this.getGameState(dino);
+        if (dino.brain.decide(state)) dino.jump();
+      }
+
+      dino.update();
+      dino.score = this.score;
+
+      // collision → die
+      if (this._collides(dino)) {
+        const nxt  = this._nextObstacle(dino);
+        const dist = nxt ? nxt.x - dino.x : 0;
+        dino.die(this.score, dist);
+      }
+    }
+
+    // draw alive dinos
+    for (const d of this.dinos) d.draw(ctx, alpha);
+
+    // draw obstacles
+    for (const o of this.obstacles) o.draw(ctx);
+
+    // overlay text (gen info, etc.)
+    if (this.overlayText) {
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.font      = 'bold 14px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText(this.overlayText, CANVAS_W - 20, 25);
+    }
+
+    // notify mode
+    if (this.onUpdate) {
+      this.onUpdate({
+        score:      Math.floor(this.score),
+        aliveCount: this.getAliveCount(),
+        totalCount: this.dinos.length,
+        frameCount: this.frameCount,
+        speed:      this.speed,
+      });
+    }
+
+    // all dead?
+    if (this.dinos.length > 0 && this.dinos.every(d => !d.alive)) {
+      this.running = false;
+      if (this.onAllDead) this.onAllDead();
+      return;
+    }
+
+    this.animFrameId = requestAnimationFrame(() => this._loop());
+  }
+}

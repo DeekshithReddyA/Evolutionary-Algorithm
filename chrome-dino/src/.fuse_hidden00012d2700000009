@@ -1,0 +1,106 @@
+import { GROUND_Y, JUMP_STRENGTH, GRAVITY } from './constants.js';
+
+export class Dino {
+  /** Shared off-screen sprite (generated once). */
+  static sprite = null;
+
+  static loadImage() {
+    if (Dino.sprite) return;
+    // Draw the T-Rex sprite once to an off-screen canvas
+    const s = document.createElement('canvas');
+    s.width  = 44;
+    s.height = 47;
+    const c  = s.getContext('2d');
+    c.fillStyle = '#535353';
+
+    // ── pixel-art T-Rex (classic Chrome style) ──
+    // head
+    c.fillRect(24, 0, 18, 4);   // top of head
+    c.fillRect(22, 4, 22, 4);   // upper head
+    c.fillRect(22, 8, 22, 4);   // eye row
+    c.clearRect(38, 8, 4, 4);   // eye cutout
+    c.fillRect(22, 12, 22, 4);  // jaw upper
+    c.fillRect(28, 16, 16, 4);  // jaw lower
+
+    // neck + body
+    c.fillRect(16, 16, 14, 4);  // neck
+    c.fillRect(8, 20, 28, 4);   // upper body + arm nub
+    c.fillRect(4, 24, 28, 4);   // body
+    c.fillRect(2, 28, 26, 4);   // body
+    c.fillRect(4, 32, 22, 4);   // lower body
+
+    // tail
+    c.fillRect(0, 24, 4, 4);    // tail tip
+
+    // legs
+    c.fillRect(8, 36, 6, 8);    // left leg
+    c.fillRect(18, 36, 6, 8);   // right leg
+    c.fillRect(6, 44, 4, 3);    // left foot
+    c.fillRect(16, 44, 4, 3);   // right foot
+
+    Dino.sprite = s;
+  }
+
+  constructor() {
+    this.width  = 44;
+    this.height = 47;
+    this.x = 330;
+    this.y = GROUND_Y - this.height;
+
+    this.velocity = 0;
+    this.jumping  = false;
+
+    // ── AI state ──
+    this.alive          = true;
+    this.brain          = null;
+    this.score          = 0;
+    this.framesSurvived = 0;
+    this.fitness        = 0;
+    this.distToObsWhenDied = 0;
+  }
+
+  jump() {
+    if (this.jumping || !this.alive) return;
+    this.jumping  = true;
+    this.velocity = JUMP_STRENGTH;
+  }
+
+  update() {
+    if (!this.alive) return;
+    this.framesSurvived++;
+
+    if (!this.jumping) return;
+    this.velocity += GRAVITY;
+    this.y += this.velocity;
+
+    if (this.y >= GROUND_Y - this.height) {
+      this.y       = GROUND_Y - this.height;
+      this.velocity = 0;
+      this.jumping  = false;
+    }
+  }
+
+  die(score, distToObs) {
+    this.alive             = false;
+    this.score             = score;
+    this.distToObsWhenDied = distToObs;
+  }
+
+  reset() {
+    this.y       = GROUND_Y - this.height;
+    this.velocity = 0;
+    this.jumping  = false;
+    this.alive    = true;
+    this.score    = 0;
+    this.framesSurvived    = 0;
+    this.fitness           = 0;
+    this.distToObsWhenDied = 0;
+  }
+
+  draw(ctx, alpha = 1) {
+    if (!this.alive || !Dino.sprite) return;
+    ctx.globalAlpha = alpha;
+    ctx.drawImage(Dino.sprite, this.x, this.y, this.width, this.height);
+    ctx.globalAlpha = 1;
+  }
+}

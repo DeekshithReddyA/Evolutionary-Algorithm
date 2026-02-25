@@ -1,4 +1,4 @@
-import {AI, NEAT, NN, RL} from "./brain";
+import { AI, NEAT, NN, RL } from "./brain";
 
 const GROUND_Y: number = 300;
 const GROUND_X_START: number = 80;
@@ -12,7 +12,7 @@ const OBSTACLE_SPEED = 1.6;
 const OBSTACLE_SPEED_INCREMENT = 0.00045;
 const OBSTACLE_MAX_SPEED = 5;
 
-const SCORE_INCREMENT = 0.1;
+const SCORE_INCREMENT = 0.05;
 
 const MIN_OBSTACLE_GAP = 150;
 const MAX_OBSTACLE_GAP = 400;
@@ -23,10 +23,10 @@ const JUMP_STRENGTH = -5;
 
 
 //Factory method
-class AIFactory{
-    getAI(aiType: string): AI{
-        if(aiType === "NN") return new NN();
-        else if(aiType === "NEAT") return new NEAT();
+class AIFactory {
+    getAI(aiType: string): AI {
+        if (aiType === "NN") return new NN();
+        else if (aiType === "NEAT") return new NEAT();
         else return new RL();
     }
 }
@@ -131,13 +131,13 @@ class Game {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D | null;
     startBtn: HTMLButtonElement;
-    dino: Dino;
+    dinos: Dino[];
     playing: boolean;
     obstacles: Obstacle[];
     speed: number;
     score: number;
-    scoreElement : HTMLDivElement;
-    highScoreElement : HTMLDivElement;
+    scoreElement: HTMLDivElement;
+    highScoreElement: HTMLDivElement;
 
     smallCactusImage: HTMLImageElement;
     bigCactusImage: HTMLImageElement;
@@ -151,7 +151,7 @@ class Game {
         this.startBtn = document.getElementById("startBtn") as HTMLButtonElement;
         this.scoreElement = document.getElementById("score") as HTMLDivElement;
         this.highScoreElement = document.getElementById("highScore") as HTMLDivElement;
-        this.dino = new Dino();
+        this.dinos = [new Dino()];
         this.obstacles = [];
         this.playing = false;
         this.speed = OBSTACLE_SPEED;
@@ -180,6 +180,7 @@ class Game {
         this.startBtn.innerText = "Stop";
         this.score = 0;
         this.speed = OBSTACLE_SPEED;
+        this.dinos = [new Dino()];
     }
     stop() {
         if (this.playing) {
@@ -196,22 +197,27 @@ class Game {
 
 
         if (this.playing) {
-            if(this.speed < OBSTACLE_MAX_SPEED)
+            if (this.speed < OBSTACLE_MAX_SPEED)
                 this.speed += OBSTACLE_SPEED_INCREMENT;
-            
-            this.score += this.speed * 0.05;
+
+            this.score += this.speed * SCORE_INCREMENT;
             this.scoreElement.innerText = Math.trunc(this.score).toString();
-            
+
             // console.log(this.score);
             console.log(this.speed);
-            
+
             this._trySpawnObject();
 
             for (const obs of this.obstacles) {
                 obs.update(this.speed);
             }
             for (const obs of this.obstacles) {
-                if (this._isColliding(this.dino, obs)) {
+                for(const dino of this.dinos){
+                    if (this._isColliding(dino, obs)) {
+                        this.dinos = this.dinos.filter((d) => d !== dino)
+                    }
+                }
+                if(this.dinos.length === 0){
                     console.log("GAME OVER");
                     this.stop();
                     break;
@@ -220,9 +226,10 @@ class Game {
 
             this.obstacles = this.obstacles.filter((obs) => !obs.isOffScreen());
         }
-
-        this.dino.update();
-        this.dino.draw(this.ctx);
+        for(const dino of this.dinos){
+            dino.update();
+            dino.draw(this.ctx);
+        }
 
         for (const obs of this.obstacles) {
             obs.draw(this.ctx);
@@ -277,16 +284,16 @@ class Game {
         const speedRatio = this.speed / OBSTACLE_SPEED;
         this.nextSpawnGap =
             speedRatio * (MIN_OBSTACLE_GAP +
-            Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP));
+                Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP));
     }
 
     _isColliding(dino: Dino, obs: Obstacle): boolean {
         return (
-            dino.x + COLLISION_MARGIN < obs.cactus.x + obs.cactus.width - COLLISION_MARGIN &&
-            dino.x + dino.width - COLLISION_MARGIN > obs.cactus.x + COLLISION_MARGIN &&
-            dino.y + COLLISION_MARGIN < obs.cactus.y + obs.cactus.height - COLLISION_MARGIN &&
-            dino.y + dino.height - COLLISION_MARGIN > obs.cactus.y + COLLISION_MARGIN
-        );
+                dino.x + COLLISION_MARGIN < obs.cactus.x + obs.cactus.width - COLLISION_MARGIN &&
+                dino.x + dino.width - COLLISION_MARGIN > obs.cactus.x + COLLISION_MARGIN &&
+                dino.y + COLLISION_MARGIN < obs.cactus.y + obs.cactus.height - COLLISION_MARGIN &&
+                dino.y + dino.height - COLLISION_MARGIN > obs.cactus.y + COLLISION_MARGIN
+            );
     }
 
 
@@ -304,7 +311,9 @@ class Game {
             if (e.code === "Space" || e.code === "ArrowUp") {
                 console.log("jump");
                 e.preventDefault();
-                this.dino.jump();
+                for(const dino of this.dinos){
+                    dino.jump();
+                }
             }
         });
 
@@ -321,7 +330,7 @@ class Game {
             if (loaded === total) this._loop();
         };
 
-        this.dino.image.onload = onLoad;
+        this.dinos[0].image.onload = onLoad;
         this.smallCactusImage.onload = onLoad;
         this.bigCactusImage.onload = onLoad;
         this.threeCactusImage.onload = onLoad;
@@ -338,30 +347,30 @@ let selectedMode: string = "user";
 let game: Game | null = null;
 
 const MODE_LABELS: Record<string, string> = {
-  user: "User",
-  neural: "Neural Network",
-  neat: "NEAT",
-  rl: "RL",
+    user: "User",
+    neural: "Neural Network",
+    neat: "NEAT",
+    rl: "RL",
 };
 
 document.querySelectorAll(".mode-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    selectedMode = (btn as HTMLElement).dataset.mode || "user";
-    modeDisplay.textContent = `Mode: ${MODE_LABELS[selectedMode]}`;
-    homeScreen.classList.add("hidden");
-    gameScreen.classList.remove("hidden");
+    btn.addEventListener("click", () => {
+        selectedMode = (btn as HTMLElement).dataset.mode || "user";
+        modeDisplay.textContent = `Mode: ${MODE_LABELS[selectedMode]}`;
+        homeScreen.classList.add("hidden");
+        gameScreen.classList.remove("hidden");
 
-    // Create the game instance only when entering the game screen
-    if (!game) {
-      game = new Game();
-    }
-  });
+        // Create the game instance only when entering the game screen
+        if (!game) {
+            game = new Game();
+        }
+    });
 });
 
 backBtn.addEventListener("click", () => {
-  if (game) {
-    game.stop();
-  }
-  gameScreen.classList.add("hidden");
-  homeScreen.classList.remove("hidden");
+    if (game) {
+        game.stop();
+    }
+    gameScreen.classList.add("hidden");
+    homeScreen.classList.remove("hidden");
 });

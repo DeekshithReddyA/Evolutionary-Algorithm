@@ -1,0 +1,115 @@
+import { CANVAS_W, GROUND_Y, GROUND_X_START } from './constants.js';
+
+export class Obstacle {
+  static SMALL = { w: 17, h: 35 };
+  static BIG   = { w: 25, h: 50 };
+  static THREE = { w: 50, h: 40 };
+
+  /** Pre-rendered cactus sprites. */
+  static smallSprite = null;
+  static bigSprite   = null;
+  static threeSprite = null;
+
+  static loadImage() {
+    if (Obstacle.smallSprite) return;
+
+    // ── small cactus ──
+    const s = document.createElement('canvas');
+    s.width = 17; s.height = 35;
+    const sc = s.getContext('2d');
+    sc.fillStyle = '#2e7d32';
+    // main trunk
+    sc.fillRect(5, 0, 7, 35);
+    // left arm
+    sc.fillRect(0, 10, 5, 5);
+    sc.fillRect(0, 10, 3, 8);
+    // right arm
+    sc.fillRect(12, 14, 5, 5);
+    sc.fillRect(14, 14, 3, 8);
+    // darker detail
+    sc.fillStyle = '#1b5e20';
+    sc.fillRect(7, 0, 3, 35);
+    Obstacle.smallSprite = s;
+
+    // ── big cactus ──
+    const b = document.createElement('canvas');
+    b.width = 25; b.height = 50;
+    const bc = b.getContext('2d');
+    bc.fillStyle = '#2e7d32';
+    // main trunk
+    bc.fillRect(8, 0, 9, 50);
+    // left arm
+    bc.fillRect(0, 14, 8, 6);
+    bc.fillRect(0, 14, 4, 14);
+    // right arm
+    bc.fillRect(17, 20, 8, 6);
+    bc.fillRect(21, 20, 4, 12);
+    // darker detail
+    bc.fillStyle = '#1b5e20';
+    bc.fillRect(11, 0, 3, 50);
+    bc.fillRect(1, 14, 2, 14);
+    bc.fillRect(22, 20, 2, 12);
+    Obstacle.bigSprite = b;
+
+    // ── three cactus cluster ──
+    const t = document.createElement('canvas');
+    t.width = 50; t.height = 40;
+    const tc = t.getContext('2d');
+    tc.fillStyle = '#2e7d32';
+    // left cactus
+    tc.fillRect(3, 5, 7, 35);
+    tc.fillRect(0, 12, 3, 5);
+    tc.fillRect(10, 16, 3, 5);
+    // middle cactus (taller)
+    tc.fillRect(18, 0, 7, 40);
+    tc.fillRect(14, 10, 4, 5);
+    tc.fillRect(25, 14, 4, 5);
+    // right cactus
+    tc.fillRect(34, 8, 7, 32);
+    tc.fillRect(41, 14, 4, 5);
+    tc.fillRect(31, 18, 3, 5);
+    // darker details
+    tc.fillStyle = '#1b5e20';
+    tc.fillRect(5, 5, 3, 35);
+    tc.fillRect(20, 0, 3, 40);
+    tc.fillRect(36, 8, 3, 32);
+    Obstacle.threeSprite = t;
+  }
+
+  constructor() {
+    const r = Math.random();
+    if (r < 0.40) {
+      // small cactus (40%)
+      this.type   = 'small';
+      this.width  = Obstacle.SMALL.w;
+      this.height = Obstacle.SMALL.h;
+    } else if (r < 0.75) {
+      // big cactus (35%)
+      this.type   = 'big';
+      this.width  = Obstacle.BIG.w;
+      this.height = Obstacle.BIG.h;
+    } else {
+      // three cactus cluster (25%)
+      this.type   = 'three';
+      this.width  = Obstacle.THREE.w;
+      this.height = Obstacle.THREE.h;
+    }
+    this.x = CANVAS_W;
+    this.y = GROUND_Y - this.height;
+  }
+
+  update(speed) { this.x -= speed; }
+
+  isOffScreen() { return this.x + this.width < GROUND_X_START; }
+
+  draw(ctx) {
+    let sprite;
+    switch (this.type) {
+      case 'small': sprite = Obstacle.smallSprite; break;
+      case 'big':   sprite = Obstacle.bigSprite;   break;
+      case 'three': sprite = Obstacle.threeSprite;  break;
+    }
+    if (!sprite) return;
+    ctx.drawImage(sprite, this.x, this.y, this.width, this.height);
+  }
+}

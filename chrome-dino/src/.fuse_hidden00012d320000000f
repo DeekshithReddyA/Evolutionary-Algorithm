@@ -1,0 +1,162 @@
+// ──────────────────────────────────────────────
+//  NEAT network topology visualiser (canvas)
+// ──────────────────────────────────────────────
+import { INPUT_LABELS } from './constants.js';
+
+export class NEATVisualizer {
+  constructor(canvasId) {
+    this.canvas = document.getElementById(canvasId);
+    if (!this.canvas) return;
+    this.ctx = this.canvas.getContext('2d');
+  }
+
+  /** Draw the topology of a neataptic Network. */
+  draw(network) {
+    if (!this.canvas || !this.ctx || !network) return;
+
+    const { ctx, canvas } = this;
+    const W = canvas.width;
+    const H = canvas.height;
+
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, W, H);
+
+    const nodes = network.nodes;
+    if (!nodes || nodes.length === 0) return;
+
+    const inputCount  = network.input  || 0;
+    const outputCount = network.output || 0;
+
+    // ── build lookup: Node object → index ────
+    const obj2idx = new Map();
+    nodes.forEach((n, i) => obj2idx.set(n, i));
+
+    // ── categorise nodes ─────────────────────
+    const inputs  = [];
+    const outputs = [];
+    const hidden  = [];
+
+    nodes.forEach((node, i) => {
+      const t = node.type || (i < inputCount ? 'input'
+                   : i < inputCount + outputCount ? 'output' : 'hidden');
+      if (t === 'input')       inputs.push(i);
+      else if (t === 'output') outputs.push(i);
+      else                     hidden.push(i);
+    });
+
+    // ── position nodes ───────────────────────
+    const pad = 40;
+    const positions = new Array(nodes.length);
+
+    const colX = { input: pad + 60, output: W - pad - 60 };
+
+    inputs.forEach((idx, i) => {
+      const spacing = (H - 2 * pad) / (inputs.length + 1);
+      positions[idx] = { x: colX.input, y: pad + spacing * (i + 1), type: 'input' };
+    });
+
+    outputs.forEach((idx, i) => {
+      const spacing = (H - 2 * pad) / (outputs.length + 1);
+      positions[idx] = { x: colX.output, y: pad + spacing * (i + 1), type: 'output' };
+    });
+
+    if (hidden.length > 0) {
+      const cols      = Math.max(1, Math.ceil(Math.sqrt(hidden.length)));
+      const rows      = Math.ceil(hidden.length / cols);
+      const colWidth  = (colX.output - colX.input - 120) / (cols + 1);
+      const rowHeight = (H - 2 * pad) / (rows + 1);
+
+      hidden.forEach((idx, i) => {
+        const c = i % cols;
+        const r = Math.floor(i / cols);
+        positions[idx] = {
+          x: colX.input + 80 + colWidth * (c + 1),
+          y: pad + rowHeight * (r + 1),
+          type: 'hidden',
+        };
+      });
+    }
+
+    // ── collect connections from node.connections.out ──
+    const conns = [];
+    const seen  = new Set();
+    for (const node of nodes) {
+      const outs = node.connections?.out;
+      if (!outs) continue;
+      for (const c of outs) {
+        const fi = obj2idx.get(c.from);
+        const ti = obj2idx.get(c.to);
+        if (fi === undefined || ti === undefined) continue;
+        const key = `${fi}-${ti}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        conns.push({ fi, ti, w: c.weight || 0 });
+      }
+    }
+
+    // ── draw connections ─────────────────────
+    for (const { fi, ti, w } of conns) {
+      const from = positions[fi];
+      const to   = positions[ti];
+      if (!from || !to) continue;
+
+      const abs = Math.abs(w);
+      ctx.beginPath();
+      ctx.moveTo(from.x, from.y);
+      ctx.lineTo(to.x, to.y);
+      ctx.lineWidth   = Math.min(3, abs * 1.5 + 0.5);
+      ctx.strokeStyle = w > 0
+        ? `rgba(0,200,100,${Math.min(1, abs * 0.4 + 0.1)})`
+        : `rgba(255,80,80,${Math.min(1, abs * 0.4 + 0.1)})`;
+      ctx.stroke();
+    }
+
+    // ── draw nodes ───────────────────────────
+    const colours = { input: '#4fc3f7', output: '#ff8a65', hidden: '#81c784' };
+
+    for (let i = 0; i < positions.length; i++) {
+      const p = positions[i];
+      if (!p) continue;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+      ctx.fillStyle   = colours[p.type] || colours.hidden;
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth   = 1.5;
+      ctx.stroke();
+    }
+
+    // ── labels ───────────────────────────────
+    ctx.font      = '10px monospace';
+    ctx.fillStyle = '#aaa';
+    ctx.textAlign = 'right';
+    inputs.forEach((idx, i) => {
+      if (i < INPUT_LABELS.length && positions[idx])
+        ctx.fillText(INPUT_LABELS[i], positions[idx].x - 18, positions[idx].y + 3);
+    });
+
+    ctx.textAlign = 'left';
+    outputs.forEach((idx) => {
+      if (positions[idx])
+        ctx.fillText('Jump', positions[idx].x + 18, positions[idx].y + 3);
+    });
+
+    // ── summary line ─────────────────────────
+    ctx.fillStyle = '#888';
+    ctx.font      = '11px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(
+      `Nodes: ${nodes.length} (${inputs.length}i + ${hidden.length}h + ${outputs.length}o)  |  Connections: ${conns.length}`,
+      10, H - 10,
+    );
+  }
+
+  clear() {
+    if (!this.ctx) return;
+    const { ctx, canvas } = this;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#1a1a2e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+}

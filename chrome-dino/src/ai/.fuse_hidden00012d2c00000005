@@ -1,0 +1,50 @@
+// ── Selection strategies (Strategy pattern) ──
+
+export const SelectionStrategies = {
+
+  topN: {
+    name: 'Top-N',
+    select(rated, n) {
+      return rated.slice(0, n);
+    },
+  },
+
+  tournament: {
+    name: 'Tournament',
+    select(rated, n, tournamentSize = 3) {
+      const selected = [];
+      for (let i = 0; i < n; i++) {
+        let best = rated[Math.floor(Math.random() * rated.length)];
+        for (let j = 1; j < tournamentSize; j++) {
+          const contender = rated[Math.floor(Math.random() * rated.length)];
+          if (contender.fitness > best.fitness) best = contender;
+        }
+        selected.push(best);
+      }
+      return selected;
+    },
+  },
+
+  roulette: {
+    name: 'Roulette Wheel',
+    select(rated, n) {
+      const total = rated.reduce((s, r) => s + Math.max(0, r.fitness), 0);
+      if (total === 0) return rated.slice(0, n);
+
+      const selected = [];
+      for (let i = 0; i < n; i++) {
+        let threshold = Math.random() * total;
+        for (const ind of rated) {
+          threshold -= Math.max(0, ind.fitness);
+          if (threshold <= 0) { selected.push(ind); break; }
+        }
+        if (selected.length <= i) selected.push(rated[0]); // fallback
+      }
+      return selected;
+    },
+  },
+};
+
+export function getSelectionStrategy(key) {
+  return SelectionStrategies[key] || SelectionStrategies.topN;
+}

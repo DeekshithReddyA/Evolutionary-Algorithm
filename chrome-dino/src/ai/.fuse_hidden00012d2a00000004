@@ -1,0 +1,139 @@
+// ──────────────────────────────────────────────
+//  Dynamic Neural Network
+//  Accepts any input size; hidden layers auto-sized.
+// ──────────────────────────────────────────────
+
+export class NeuralNetwork {
+  /**
+   * @param {number[]} layerSizes  e.g. [10, 15, 8, 1]
+   */
+  constructor(layerSizes) {
+    this.layerSizes = [...layerSizes];
+    this.weights = [];
+    this.biases  = [];
+    this._initWeights();
+  }
+
+  /** Build a network whose hidden layers scale with input size. */
+  static fromInputSize(inputSize, hiddenLayers = null) {
+    if (!hiddenLayers) {
+      const h1 = Math.max(8, Math.ceil(inputSize * 1.5));
+      const h2 = Math.max(4, Math.ceil(inputSize * 0.75));
+      hiddenLayers = [h1, h2];
+    }
+    return new NeuralNetwork([inputSize, ...hiddenLayers, 1]);
+  }
+
+  // ── Initialisation (Xavier) ─────────────────
+  _initWeights() {
+    for (let l = 0; l < this.layerSizes.length - 1; l++) {
+      const rows = this.layerSizes[l + 1];
+      const cols = this.layerSizes[l];
+      const scale = Math.sqrt(2 / (cols + rows));
+      this.weights.push(
+        Array.from({ length: rows }, () =>
+          Array.from({ length: cols }, () => (Math.random() * 2 - 1) * scale),
+        ),
+      );
+      this.biases.push(
+        Array.from({ length: rows }, () => (Math.random() * 2 - 1) * 0.1),
+      );
+    }
+  }
+
+  // ── Forward pass ────────────────────────────
+  predict(inputs) {
+    let current = inputs;
+    for (let l = 0; l < this.weights.length; l++) {
+      const W = this.weights[l];
+      const b = this.biases[l];
+      const next = new Array(W.length);
+      for (let j = 0; j < W.length; j++) {
+        let sum = b[j];
+        for (let k = 0; k < current.length; k++) sum += W[j][k] * current[k];
+        next[j] = this._sigmoid(sum);
+      }
+      current = next;
+    }
+    return current;
+  }
+
+  /** Returns true when the network wants to jump. */
+  decide(inputs) {
+    return this.predict(inputs)[0] > 0.5;
+  }
+
+  _sigmoid(x) {
+    return 1 / (1 + Math.exp(-Math.max(-500, Math.min(500, x))));
+  }
+
+  // ── Weight access ───────────────────────────
+  getWeights() {
+    return {
+      weights: this.weights.map(w => w.map(r => [...r])),
+      biases:  this.biases.map(b => [...b]),
+    };
+  }
+
+  setWeights(data) {
+    this.weights = data.weights.map(w => w.map(r => [...r]));
+    this.biases  = data.biases.map(b => [...b]);
+  }
+
+  // ── Genetic operators ───────────────────────
+  clone() {
+    const nn = new NeuralNetwork(this.layerSizes);
+    nn.setWeights(this.getWeights());
+    return nn;
+  }
+
+  mutate(rate) {
+    for (let l = 0; l < this.weights.length; l++) {
+      for (let j = 0; j < this.weights[l].length; j++) {
+        for (let k = 0; k < this.weights[l][j].length; k++) {
+          if (Math.random() < rate)
+            this.weights[l][j][k] += (Math.random() * 2 - 1) * 0.5;
+        }
+      }
+      for (let j = 0; j < this.biases[l].length; j++) {
+        if (Math.random() < rate)
+          this.biases[l][j] += (Math.random() * 2 - 1) * 0.5;
+      }
+    }
+  }
+
+  /** Uniform crossover – each weight randomly picked from either parent. */
+  crossover(other) {
+    const child = this.clone();
+    const od = other.getWeights();
+    for (let l = 0; l < child.weights.length; l++) {
+      for (let j = 0; j < child.weights[l].length; j++) {
+        for (let k = 0; k < child.weights[l][j].length; k++) {
+          if (Math.random() < 0.5)
+            child.weights[l][j][k] = od.weights[l][j][k];
+        }
+      }
+      for (let j = 0; j < child.biases[l].length; j++) {
+        if (Math.random() < 0.5) child.biases[l][j] = od.biases[l][j];
+      }
+    }
+    return child;
+  }
+
+  // ── Serialisation ───────────────────────────
+  serialize() {
+    return JSON.stringify({
+      layerSizes: this.layerSizes,
+      weights: this.weights,
+      biases: this.biases,
+    });
+  }
+
+  static deserialize(json) {
+    const d = typeof json === 'string' ? JSON.parse(json) : json;
+    const nn = new NeuralNetwork(d.layerSizes);
+    nn.weights = d.weights;
+    nn.biases  = d.biases;
+    return nn;
+  }
+}
