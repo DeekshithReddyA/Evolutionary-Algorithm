@@ -16,12 +16,15 @@ export class NeuralNetwork {
             const weight: number[][] = new Array(currSize);
             const b: number[] = new Array(currSize);
 
+            // He initialization: scale by sqrt(2 / fanIn) — prevents dead ReLU neurons
+            const scale = Math.sqrt(2 / prevSize);
+
             for(let j = 0; j < currSize; j++){
                 weight[j] = [];
                 for(let k = 0; k < prevSize; k++){
-                    weight[j][k] = Math.random() * 2 - 1;
+                    weight[j][k] = (Math.random() * 2 - 1) * scale;
                 }
-                b[j] = Math.random() * 2 - 1;
+                b[j] = 0; // Initialize biases to 0 (standard practice with He init)
             }
 
             this.weights.push(weight);

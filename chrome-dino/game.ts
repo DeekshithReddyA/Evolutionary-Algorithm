@@ -74,6 +74,7 @@ export class Dino {
         if (this.y >= GROUND_Y - this.height) {
             this.y = GROUND_Y - this.height;
             this.jumping = false;
+            this.velocity = 0; // Reset velocity on landing — prevents stale values in game state
         }
     }
 }
@@ -229,7 +230,7 @@ export class Game {
                 if (dino.brain) {
                     const inputs = this._getGameState(dino);
                     const decision = dino.brain.feedforward(inputs);
-                    console.log("Decision: ", decision);
+                    // console.log("Decision: ", decision);
                     if (decision === 1) {
                         dino.jump();
                     }
@@ -330,9 +331,9 @@ export class Game {
     }
 
     _getGameState(dino: Dino): number[] {
-        // Find the first two obstacles ahead of the dino
+        // Find the first two obstacles fully ahead of the dino
         const upcomingObstacles = this.obstacles.filter(
-            obs => obs.cactus.x + obs.cactus.width > dino.x
+            obs => obs.cactus.x + obs.cactus.width > dino.x + dino.width
         ).slice(0, 2);
 
         const firstObstacle = upcomingObstacles[0] || null;
@@ -374,11 +375,18 @@ export class Game {
         // Is dino jumping (binary)
         const isJumping = dino.jumping ? 1.0 : 0.0;
 
-        // Dino width (normalized)
-        const normalizedDinoWidth = dino.width / 50;
+        // Dino's current height off the ground (0 = on ground, ~0.4 = peak of jump)
+        // This is CRITICAL — without it the network can't tell where the dino is mid-jump
+        const groundLevel = GROUND_Y - dino.height;
+        const dinoHeight = (groundLevel - dino.y) / groundLevel;
 
         // Dino velocity (normalized: velocity ranges roughly -5 to +5)
         const normalizedVelocity = (dino.velocity + 5) / 10;
+
+        // Gap between first and second obstacle (helps decide if there's a tight cluster)
+        const gapBetween = (secondObstacle && firstObstacle)
+            ? (secondObstacle.cactus.x - (firstObstacle.cactus.x + firstObstacle.cactus.width)) / GROUND_X_END
+            : 1.0;
 
         return [
             distToFirst,
@@ -389,8 +397,9 @@ export class Game {
             widthSecond,
             normalizedSpeed,
             isJumping,
-            normalizedDinoWidth,
-            normalizedVelocity
+            dinoHeight,
+            normalizedVelocity,
+            gapBetween
         ];
     }
 
@@ -467,11 +476,11 @@ document.querySelectorAll(".mode-btn").forEach((btn) => {
         if (selectedMode === "neural" && game) {
             game.gaMode = new GAMode(game);
             game.gaMode.startTraining({
-                populationSize: 50,
-                mutationRate: 0.1,
-                crossoverRate: 0.8,
-                elitismCount: 5,
-                inputSize: 10
+                populationSize: 150,
+                mutationRate: 0.15,
+                crossoverRate: 0.7,
+                elitismCount: 10,
+                inputSize: 11
             });
             // Auto-start the game in training mode
             setTimeout(() => game?.start(), 100);

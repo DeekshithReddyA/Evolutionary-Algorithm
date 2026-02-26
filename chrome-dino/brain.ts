@@ -15,10 +15,10 @@ export class GA implements AI{
     population: NeuralNetwork[];
     generation: number;
     constructor(config: Config){
-        this.populationSize = config.populationSize || 50;
+        this.populationSize = config.populationSize || 100;
         this.mutationRate = config.mutationRate || 0.1;
         this.crossoverRate = config.crossoverRate || 0.8;
-        this.elitismCount = config.elitismCount || 6;
+        this.elitismCount = config.elitismCount || 15;
         this.inputSize = config.inputSize || 10;
 
         this.population = [];
@@ -27,7 +27,7 @@ export class GA implements AI{
 
     _initPopulation(): NeuralNetwork[] {
         for(let i = 0; i < this.populationSize; i++){
-            const nn = new NeuralNetwork([this.inputSize, 5, 2]);
+            const nn = new NeuralNetwork([this.inputSize, 8, 2]);
             this.population.push(nn);
         }
 
@@ -68,7 +68,7 @@ export class GA implements AI{
                 child = parentA.clone();
             }
 
-            child.mutate(this.mutationRate, 0.1);
+            child.mutate(this.mutationRate, 0.2);
             next.push(child);
         }
 
