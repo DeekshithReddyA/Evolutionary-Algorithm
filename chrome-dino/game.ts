@@ -12,7 +12,7 @@ const THREE_CACTUS_PATH = "/3cactus.png"
 
 const OBSTACLE_SPEED = 1.6;
 const OBSTACLE_SPEED_INCREMENT = 0.00045;
-const OBSTACLE_MAX_SPEED = 14;
+const OBSTACLE_MAX_SPEED = 9;
 
 const SCORE_INCREMENT = 0.05;
 
@@ -221,7 +221,7 @@ export class Game {
             this.scoreElement.innerText = Math.trunc(this.score).toString();
 
             // console.log(this.score);
-            console.log(this.speed);
+            // console.log(this.speed);
 
             this._trySpawnObject();
 
