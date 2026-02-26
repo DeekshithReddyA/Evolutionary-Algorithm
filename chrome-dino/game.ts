@@ -12,7 +12,7 @@ const THREE_CACTUS_PATH = "/3cactus.png"
 
 const OBSTACLE_SPEED = 1.6;
 const OBSTACLE_SPEED_INCREMENT = 0.00045;
-const OBSTACLE_MAX_SPEED = 5;
+const OBSTACLE_MAX_SPEED = 14;
 
 const SCORE_INCREMENT = 0.05;
 
@@ -221,7 +221,7 @@ export class Game {
             this.scoreElement.innerText = Math.trunc(this.score).toString();
 
             // console.log(this.score);
-            // console.log(this.speed);
+            console.log(this.speed);
 
             this._trySpawnObject();
 
@@ -296,7 +296,7 @@ export class Game {
                 this.threeCactusImage
             ));
             const speedRatio = this.speed / OBSTACLE_SPEED;
-            this.nextSpawnGap = speedRatio * (MIN_OBSTACLE_GAP + Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP));
+            this.nextSpawnGap = MIN_OBSTACLE_GAP * speedRatio + Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP);
             return;
         }
         const distance = GROUND_X_END - lastCacti.cactus.x;
@@ -314,11 +314,10 @@ export class Game {
             )
         );
 
-        //next random gap (scaled by speed)
+        //next random gap: scale min by speed (ensures enough time to jump), fixed random range on top
         const speedRatio = this.speed / OBSTACLE_SPEED;
         this.nextSpawnGap =
-            speedRatio * (MIN_OBSTACLE_GAP +
-                Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP));
+            MIN_OBSTACLE_GAP * speedRatio + Math.random() * (MAX_OBSTACLE_GAP - MIN_OBSTACLE_GAP);
     }
 
     _isColliding(dino: Dino, obs: Obstacle): boolean {
@@ -390,16 +389,16 @@ export class Game {
 
         return [
             distToFirst,
-            distToSecond,
+            // distToSecond,
             heightFirst,
             widthFirst,
-            heightSecond,
-            widthSecond,
+            // heightSecond,
+            // widthSecond,
             normalizedSpeed,
             isJumping,
             dinoHeight,
             normalizedVelocity,
-            gapBetween
+            // gapBetween
         ];
     }
 
@@ -480,7 +479,7 @@ document.querySelectorAll(".mode-btn").forEach((btn) => {
                 mutationRate: 0.15,
                 crossoverRate: 0.7,
                 elitismCount: 10,
-                inputSize: 11
+                inputSize: 7, // Must match the number of inputs in _getGameState
             });
             // Auto-start the game in training mode
             setTimeout(() => game?.start(), 100);
