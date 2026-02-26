@@ -46,11 +46,6 @@ body {
   background-color: #94a3b8;
 }
 
-/* Utility */
-.hidden {
-  display: none !important;
-}
-
 /* Home Screen */
 .home-screen {
   display: flex;

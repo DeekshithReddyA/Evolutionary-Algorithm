@@ -1,7 +1,7 @@
-import { GA } from "../brain";
-import { Dino, Game } from "../game";
-import { NeuralNetwork } from "../nn";
-import { Config } from "../types";
+import { GA } from "../engine/brain";
+import { Dino, Game } from "../engine/game";
+import { NeuralNetwork } from "../engine/nn";
+import { Config } from "../engine/types";
 
 export class GAMode{
     engine: Game

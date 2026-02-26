@@ -1,6 +1,5 @@
-import { AI, NEAT, GA, RL } from "./brain";
 import { NeuralNetwork } from "./nn";
-import { GAMode } from "./modes/GA";
+import { GAMode } from "../modes/GA";
 
 const GROUND_Y: number = 300;
 const GROUND_X_START: number = 80;
@@ -22,16 +21,6 @@ const MAX_OBSTACLE_GAP = 400;
 const COLLISION_MARGIN = 5; // Pixels to shrink collision box for tighter detection
 
 const JUMP_STRENGTH = -5;
-
-
-//Factory method
-class AIFactory {
-    getAI(aiType: string, config?: any): AI {
-        if (aiType === "GA") return new GA(config);
-        else if (aiType === "NEAT") return new NEAT();
-        else return new RL();
-    }
-}
 
 
 export class Dino {
@@ -142,8 +131,8 @@ export class Game {
     obstacles: Obstacle[];
     speed: number;
     score: number;
-    scoreElement: HTMLDivElement;
-    highScoreElement: HTMLDivElement;
+    scoreElement: HTMLElement;
+    highScoreElement: HTMLElement;
 
     smallCactusImage: HTMLImageElement;
     bigCactusImage: HTMLImageElement;
@@ -155,12 +144,21 @@ export class Game {
     nextSpawnGap: number;
     gaMode: GAMode | null;
 
-    constructor() {
-        this.canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
+    private _animFrameId: number = 0;
+    private _destroyed: boolean = false;
+    private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
+
+    constructor(
+        canvas: HTMLCanvasElement,
+        startBtn: HTMLButtonElement,
+        scoreElement: HTMLElement,
+        highScoreElement: HTMLElement
+    ) {
+        this.canvas = canvas;
         this.ctx = this.canvas.getContext("2d");
-        this.startBtn = document.getElementById("startBtn") as HTMLButtonElement;
-        this.scoreElement = document.getElementById("score") as HTMLDivElement;
-        this.highScoreElement = document.getElementById("highScore") as HTMLDivElement;
+        this.startBtn = startBtn;
+        this.scoreElement = scoreElement;
+        this.highScoreElement = highScoreElement;
         this.dinos = [new Dino()];
         this.obstacles = [];
         this.playing = false;
@@ -209,6 +207,8 @@ export class Game {
     }
 
     _loop() {
+        if (this._destroyed) return;
+
         this.ctx?.clearRect(0, 0, 900, 500);
         this.drawGround();
 
@@ -270,13 +270,11 @@ export class Game {
         }
 
 
-        requestAnimationFrame(() => this._loop());
+        this._animFrameId = requestAnimationFrame(() => this._loop());
     }
 
     drawGround() {
         if (this.ctx) {
-            // ctx.lineWidth = 5;
-
             this.ctx.beginPath();
             this.ctx.strokeStyle = 'black'
             this.ctx.moveTo(GROUND_X_START, GROUND_Y);
@@ -413,7 +411,7 @@ export class Game {
 
 
     _bindInput() {
-        window.addEventListener("keydown", (e) => {
+        this._keyHandler = (e: KeyboardEvent) => {
             if (e.code === "Space" || e.code === "ArrowUp") {
                 // console.log("jump");
                 e.preventDefault();
@@ -421,7 +419,8 @@ export class Game {
                     dino.jump();
                 }
             }
-        });
+        };
+        window.addEventListener("keydown", this._keyHandler);
 
         this.startBtn.addEventListener("click", () => this.togglePlay());
     }
@@ -441,56 +440,15 @@ export class Game {
         this.bigCactusImage.onload = onLoad;
         this.threeCactusImage.onload = onLoad;
     }
-}
 
-// --- Home / Game screen navigation ---
-const homeScreen = document.getElementById("homeScreen") as HTMLDivElement;
-const gameScreen = document.getElementById("gameScreen") as HTMLDivElement;
-const modeDisplay = document.getElementById("modeDisplay") as HTMLSpanElement;
-const backBtn = document.getElementById("backBtn") as HTMLButtonElement;
-
-let selectedMode: string = "user";
-let game: Game | null = null;
-
-const MODE_LABELS: Record<string, string> = {
-    user: "User",
-    neural: "Neural Network",
-    neat: "NEAT",
-    rl: "RL",
-};
-
-document.querySelectorAll(".mode-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-        selectedMode = (btn as HTMLElement).dataset.mode || "user";
-        modeDisplay.textContent = `Mode: ${MODE_LABELS[selectedMode]}`;
-        homeScreen.classList.add("hidden");
-        gameScreen.classList.remove("hidden");
-
-        // Create the game instance only when entering the game screen
-        if (!game) {
-            game = new Game();
+    destroy() {
+        this._destroyed = true;
+        this.stop();
+        if (this._animFrameId) {
+            cancelAnimationFrame(this._animFrameId);
         }
-
-        // Initialize GA mode if neural network mode is selected
-        if (selectedMode === "neural" && game) {
-            game.gaMode = new GAMode(game);
-            game.gaMode.startTraining({
-                populationSize: 150,
-                mutationRate: 0.15,
-                crossoverRate: 0.7,
-                elitismCount: 10,
-                inputSize: 7, // Must match the number of inputs in _getGameState
-            });
-            // Auto-start the game in training mode
-            setTimeout(() => game?.start(), 100);
+        if (this._keyHandler) {
+            window.removeEventListener("keydown", this._keyHandler);
         }
-    });
-});
-
-backBtn.addEventListener("click", () => {
-    if (game) {
-        game.stop();
     }
-    gameScreen.classList.add("hidden");
-    homeScreen.classList.remove("hidden");
-});
+}
