@@ -116,6 +116,30 @@ export class NeuralNetwork {
         }
     }
 
+    crossover(partner: NeuralNetwork): NeuralNetwork {
+        const child = this.clone();
+
+        for(let i = 0; i < this.weights.length; i++){
+            for(let j = 0; j < this.weights[i].length; j++){
+                for(let k = 0; k < this.weights[i][j].length; k++){
+                    if(Math.random() < 0.5){
+                        child.weights[i][j][k] = partner.weights[i][j][k];
+                    }
+                }
+            }
+        }
+
+        for(let i = 0; i < this.bias.length; i++){
+            for(let j = 0; j < this.bias[i].length; j++){
+                if(Math.random() < 0.5){
+                    child.bias[i][j] = partner.bias[i][j];
+                }
+            }
+        }
+
+        return child;
+    }
+
     toJson(): string { 
         return JSON.stringify(
             {

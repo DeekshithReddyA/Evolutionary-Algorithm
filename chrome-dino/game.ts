@@ -1,4 +1,5 @@
-import { AI, NEAT, NN, RL } from "./brain";
+import { AI, NEAT, GA, RL } from "./brain";
+import { NeuralNetwork } from "./nn";
 
 const GROUND_Y: number = 300;
 const GROUND_X_START: number = 80;
@@ -24,15 +25,15 @@ const JUMP_STRENGTH = -5;
 
 //Factory method
 class AIFactory {
-    getAI(aiType: string): AI {
-        if (aiType === "NN") return new NN();
+    getAI(aiType: string, config?: any): AI {
+        if (aiType === "GA") return new GA(config);
         else if (aiType === "NEAT") return new NEAT();
         else return new RL();
     }
 }
 
 
-class Dino {
+export class Dino {
     width: number = 50;
     height: number = 50;
     x: number = 90;
@@ -41,10 +42,13 @@ class Dino {
     velocity: number = 0; // negative for upward direction, positive for downward direction
     gravity: number = 0.12; // small intervals to show more re-renders leading to more fps, more fps = more smoothness
     jumping: boolean = false;
+    brain: NeuralNetwork | null = null;
+    score: number = 0;
 
     constructor() {
         this.image = new Image();
         this.image.src = "/dino.png";
+        this.score = 0;
     }
 
     draw(ctx: CanvasRenderingContext2D | null) {
@@ -73,7 +77,7 @@ class Dino {
     }
 }
 
-class cactus {
+export class cactus {
     x: number;
     y: number;
 
@@ -91,7 +95,7 @@ class cactus {
     }
 }
 
-class Obstacle {
+export class Obstacle {
     cactus: cactus
     constructor(smallCactusImg: HTMLImageElement,
         bigCactusImg: HTMLImageElement,
@@ -127,7 +131,7 @@ class Obstacle {
 }
 
 
-class Game {
+export class Game {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D | null;
     startBtn: HTMLButtonElement;
@@ -143,6 +147,8 @@ class Game {
     bigCactusImage: HTMLImageElement;
     threeCactusImage: HTMLImageElement;
 
+    onAllDead: (() => void) | null;
+
     nextSpawnGap: number;
 
     constructor() {
@@ -157,6 +163,7 @@ class Game {
         this.speed = OBSTACLE_SPEED;
         this.score = 0;
 
+        this.onAllDead = null;
 
         this.nextSpawnGap = MIN_OBSTACLE_GAP;
 
@@ -213,6 +220,7 @@ class Game {
             }
             for (const obs of this.obstacles) {
                 for(const dino of this.dinos){
+                    dino.score = this.score;
                     if (this._isColliding(dino, obs)) {
                         this.dinos = this.dinos.filter((d) => d !== dino)
                     }
