@@ -1,5 +1,6 @@
 import { AI, NEAT, GA, RL } from "./brain";
 import { NeuralNetwork } from "./nn";
+import { GAMode } from "./modes/GA";
 
 const GROUND_Y: number = 300;
 const GROUND_X_START: number = 80;
@@ -148,8 +149,10 @@ export class Game {
     threeCactusImage: HTMLImageElement;
 
     onAllDead: (() => void) | null;
+    deadDinos: Dino[];
 
     nextSpawnGap: number;
+    gaMode: GAMode | null;
 
     constructor() {
         this.canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
@@ -164,8 +167,10 @@ export class Game {
         this.score = 0;
 
         this.onAllDead = null;
+        this.deadDinos = [];
 
         this.nextSpawnGap = MIN_OBSTACLE_GAP;
+        this.gaMode = null;
 
         this.smallCactusImage = new Image();
         this.smallCactusImage.src = SMALL_CACTUS_PATH;
@@ -187,7 +192,11 @@ export class Game {
         this.startBtn.innerText = "Stop";
         this.score = 0;
         this.speed = OBSTACLE_SPEED;
-        this.dinos = [new Dino()];
+        this.deadDinos = [];
+        // Only reset dinos if not in GA mode (if dinos don't have brains)
+        if (!this.gaMode || !this.dinos[0]?.brain) {
+            this.dinos = [new Dino()];
+        }
     }
     stop() {
         if (this.playing) {
@@ -211,9 +220,21 @@ export class Game {
             this.scoreElement.innerText = Math.trunc(this.score).toString();
 
             // console.log(this.score);
-            console.log(this.speed);
+            // console.log(this.speed);
 
             this._trySpawnObject();
+
+            // AI Decision Making
+            for (const dino of this.dinos) {
+                if (dino.brain) {
+                    const inputs = this._getGameState(dino);
+                    const decision = dino.brain.feedforward(inputs);
+                    console.log("Decision: ", decision);
+                    if (decision === 1) {
+                        dino.jump();
+                    }
+                }
+            }
 
             for (const obs of this.obstacles) {
                 obs.update(this.speed);
@@ -222,12 +243,16 @@ export class Game {
                 for(const dino of this.dinos){
                     dino.score = this.score;
                     if (this._isColliding(dino, obs)) {
+                        this.deadDinos.push(dino);
                         this.dinos = this.dinos.filter((d) => d !== dino)
                     }
                 }
                 if(this.dinos.length === 0){
                     console.log("GAME OVER");
                     this.stop();
+                    if (this.onAllDead) {
+                        this.onAllDead();
+                    }
                     break;
                 }
             }
@@ -304,6 +329,71 @@ export class Game {
             );
     }
 
+    _getGameState(dino: Dino): number[] {
+        // Find the first two obstacles ahead of the dino
+        const upcomingObstacles = this.obstacles.filter(
+            obs => obs.cactus.x + obs.cactus.width > dino.x
+        ).slice(0, 2);
+
+        const firstObstacle = upcomingObstacles[0] || null;
+        const secondObstacle = upcomingObstacles[1] || null;
+
+        // Distance to first obstacle (normalized by screen width)
+        const distToFirst = firstObstacle 
+            ? (firstObstacle.cactus.x - (dino.x + dino.width)) / GROUND_X_END
+            : 1.0;
+
+        // Distance to second obstacle (normalized by screen width)
+        const distToSecond = secondObstacle
+            ? (secondObstacle.cactus.x - (dino.x + dino.width)) / GROUND_X_END
+            : 1.0;
+
+        // Height of first obstacle (normalized by max obstacle height)
+        const heightFirst = firstObstacle
+            ? firstObstacle.cactus.height / 50
+            : 0.0;
+
+        // Width of first obstacle (normalized by max obstacle width)
+        const widthFirst = firstObstacle
+            ? firstObstacle.cactus.width / 50
+            : 0.0;
+
+        // Height of second obstacle (normalized by max obstacle height)
+        const heightSecond = secondObstacle
+            ? secondObstacle.cactus.height / 50
+            : 0.0;
+
+        // Width of second obstacle (normalized by max obstacle width)
+        const widthSecond = secondObstacle
+            ? secondObstacle.cactus.width / 50
+            : 0.0;
+
+        // Obstacle speed (normalized by max speed)
+        const normalizedSpeed = this.speed / OBSTACLE_MAX_SPEED;
+
+        // Is dino jumping (binary)
+        const isJumping = dino.jumping ? 1.0 : 0.0;
+
+        // Dino width (normalized)
+        const normalizedDinoWidth = dino.width / 50;
+
+        // Dino velocity (normalized: velocity ranges roughly -5 to +5)
+        const normalizedVelocity = (dino.velocity + 5) / 10;
+
+        return [
+            distToFirst,
+            distToSecond,
+            heightFirst,
+            widthFirst,
+            heightSecond,
+            widthSecond,
+            normalizedSpeed,
+            isJumping,
+            normalizedDinoWidth,
+            normalizedVelocity
+        ];
+    }
+
 
     togglePlay() {
         if (this.playing) {
@@ -317,7 +407,7 @@ export class Game {
     _bindInput() {
         window.addEventListener("keydown", (e) => {
             if (e.code === "Space" || e.code === "ArrowUp") {
-                console.log("jump");
+                // console.log("jump");
                 e.preventDefault();
                 for(const dino of this.dinos){
                     dino.jump();
@@ -371,6 +461,20 @@ document.querySelectorAll(".mode-btn").forEach((btn) => {
         // Create the game instance only when entering the game screen
         if (!game) {
             game = new Game();
+        }
+
+        // Initialize GA mode if neural network mode is selected
+        if (selectedMode === "neural" && game) {
+            game.gaMode = new GAMode(game);
+            game.gaMode.startTraining({
+                populationSize: 50,
+                mutationRate: 0.1,
+                crossoverRate: 0.8,
+                elitismCount: 5,
+                inputSize: 10
+            });
+            // Auto-start the game in training mode
+            setTimeout(() => game?.start(), 100);
         }
     });
 });

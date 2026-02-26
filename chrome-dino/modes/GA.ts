@@ -38,16 +38,25 @@ export class GAMode{
     }
     
     _endGeneration() {
-        if(!this.isRunning) return;
+        if(!this.isRunning || !this.ga) return;
 
-        const fitnesses = this.engine.dinos.map(d => d.score);
+        // Build fitness array matching population order using brain references
+        const fitnesses = this.ga.population.map((nn) => {
+            const dino = this.engine.deadDinos.find(d => d.brain === nn);
+            return dino ? dino.score : 0;
+        });
 
-        // Save the best one for alanysis TODO
-        
-        if(this.ga){
-            this.ga?.evolve(fitnesses);
-            this._startGeneration(this.ga?.population);
+        // Update best fitness
+        const maxFitness = Math.max(...fitnesses);
+        if (maxFitness > this.bestFitnessAllTime) {
+            this.bestFitnessAllTime = maxFitness;
         }
 
+        console.log(`Generation ${this.ga.generation} - Best: ${maxFitness.toFixed(2)}, All-time: ${this.bestFitnessAllTime.toFixed(2)}`);
+        
+        const nextGen = this.ga.evolve(fitnesses);
+        this._startGeneration(nextGen);
+        // Restart the game with new generation
+        this.engine.start();
     }
 }

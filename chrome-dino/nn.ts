@@ -46,7 +46,7 @@ export class NeuralNetwork {
         return maxIndex;
     }
 
-    feedforward(inputs: number[]): number[]{
+    feedforward(inputs: number[]): number{
         let x = inputs;
 
         for(let L = 0; L < this.layerSizes.length - 1; L++){
@@ -73,7 +73,7 @@ export class NeuralNetwork {
             x = next;
         }
 
-        return x;
+        return this._argmax(x);
     }
 
     clone(){

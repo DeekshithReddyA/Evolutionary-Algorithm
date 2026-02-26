@@ -27,7 +27,7 @@ export class GA implements AI{
 
     _initPopulation(): NeuralNetwork[] {
         for(let i = 0; i < this.populationSize; i++){
-            const nn = new NeuralNetwork([this.inputSize, 5, 1]);
+            const nn = new NeuralNetwork([this.inputSize, 5, 2]);
             this.population.push(nn);
         }
 
