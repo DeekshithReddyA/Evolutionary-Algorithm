@@ -1,5 +1,4 @@
-import { NeuralNetwork } from "./nn";
-import { GAMode } from "../modes/GA";
+import { Brain } from "./types";
 
 const GROUND_Y: number = 300;
 const GROUND_X_START: number = 80;
@@ -32,7 +31,7 @@ export class Dino {
     velocity: number = 0; // negative for upward direction, positive for downward direction
     gravity: number = 0.12; // small intervals to show more re-renders leading to more fps, more fps = more smoothness
     jumping: boolean = false;
-    brain: NeuralNetwork | null = null;
+    brain: Brain | null = null;
     score: number = 0;
 
     constructor() {
@@ -142,7 +141,6 @@ export class Game {
     deadDinos: Dino[];
 
     nextSpawnGap: number;
-    gaMode: GAMode | null;
 
     private _animFrameId: number = 0;
     private _destroyed: boolean = false;
@@ -169,7 +167,6 @@ export class Game {
         this.deadDinos = [];
 
         this.nextSpawnGap = MIN_OBSTACLE_GAP;
-        this.gaMode = null;
 
         this.smallCactusImage = new Image();
         this.smallCactusImage.src = SMALL_CACTUS_PATH;
@@ -192,8 +189,8 @@ export class Game {
         this.score = 0;
         this.speed = OBSTACLE_SPEED;
         this.deadDinos = [];
-        // Only reset dinos if not in GA mode (if dinos don't have brains)
-        if (!this.gaMode || !this.dinos[0]?.brain) {
+        // Only reset dinos if no AI brains are assigned
+        if (!this.dinos[0]?.brain) {
             this.dinos = [new Dino()];
         }
     }

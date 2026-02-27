@@ -83,11 +83,3 @@ export class GA implements AI{
     }
 
 }
-
-export class NEAT implements AI{
-
-}
-
-export class RL implements AI{
-
-}
