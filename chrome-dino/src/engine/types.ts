@@ -27,6 +27,14 @@ export interface NEATConfig {
     survivalRate: number;
 }
 
+/** PPO configuration */
+export interface PPOConfig {
+    nAgents: number;
+    learningRate: number;
+    clipEpsilon: number;
+    inputSize: number;
+}
+
 /** Stats collected each generation */
 export interface GenerationStats {
     generation: number;

@@ -6,7 +6,7 @@ const modes = [
     { key: 'user', icon: '🎮', label: 'User' },
     { key: 'neural', icon: '🧬', label: 'Neural Network' },
     { key: 'neat', icon: '🧠', label: 'NEAT' },
-    { key: 'rl', icon: '🤖', label: 'RL' },
+    { key: 'rl', icon: '🤖', label: 'PPO' },
 ];
 
 export default function HomeScreen({ onSelectMode }: HomeScreenProps) {

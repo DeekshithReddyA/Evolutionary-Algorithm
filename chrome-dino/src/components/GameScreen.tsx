@@ -4,6 +4,8 @@ import { NeuralNetwork } from "../engine/nn";
 import { Genome, InnovationTracker } from "../engine/neat";
 import { GAMode } from "../modes/GA";
 import { NEATMode } from "../modes/NEAT";
+import { PPOMode } from "../modes/PPO";
+import { PPOBrain, PPOTrainer } from "../engine/ppo";
 import { GenerationStats } from "../engine/types";
 import { drawFitnessGraph, drawNetwork } from "../utils/canvasUtils";
 
@@ -16,7 +18,7 @@ const MODE_LABELS: Record<string, string> = {
     user: "User",
     neural: "Neural Network (GA)",
     neat: "NEAT",
-    rl: "RL",
+    rl: "PPO",
 };
 
 /* ── Default configs ── */
@@ -41,6 +43,13 @@ const defaultNEATConfig = () => ({
     c2: 1.0,
     c3: 0.4,
     survivalRate: 0.3,
+});
+
+const defaultPPOConfig = () => ({
+    nAgents: 20,
+    learningRate: 3e-4,
+    clipEpsilon: 0.2,
+    inputSize: 7,
 });
 
 /* ── Helpers ── */
@@ -85,6 +94,7 @@ export default function GameScreen({ mode, onBack }: GameScreenProps) {
     const gameRef = useRef<Game | null>(null);
     const gaModeRef = useRef<GAMode | null>(null);
     const neatModeRef = useRef<NEATMode | null>(null);
+    const ppoModeRef = useRef<PPOMode | null>(null);
 
     /* ── State ── */
     const [phase, setPhase] = useState<"idle" | "training" | "inference">("idle");
@@ -106,7 +116,15 @@ export default function GameScreen({ mode, onBack }: GameScreenProps) {
     const [neatAddConn, setNeatAddConn] = useState(0.05);
     const [neatCompat, setNeatCompat] = useState(3.0);
 
-    const isAI = mode === "neural" || mode === "neat";
+    // Config state (PPO)
+    const [ppoAgents, setPpoAgents] = useState(20);
+    const [ppoLR, setPpoLR] = useState(3e-4);
+    const [ppoClip, setPpoClip] = useState(0.2);
+
+    // PPO metrics
+    const [ppoMetrics, setPpoMetrics] = useState<{ policyLoss: number; valueLoss: number; entropy: number } | null>(null);
+
+    const isAI = mode === "neural" || mode === "neat" || mode === "rl";
 
     /* ── Create Game on mount ── */
     useEffect(() => {
@@ -123,6 +141,7 @@ export default function GameScreen({ mode, onBack }: GameScreenProps) {
             gameRef.current = null;
             gaModeRef.current = null;
             neatModeRef.current = null;
+            ppoModeRef.current = null;
         };
     }, [mode]);
 
@@ -149,6 +168,7 @@ export default function GameScreen({ mode, onBack }: GameScreenProps) {
         setLatestStat(null);
         setBestGenomeViz(null);
         setHasBestModel(false);
+        setPpoMetrics(null);
 
         if (mode === "neural") {
             const gaMode = new GAMode(game);
@@ -184,14 +204,35 @@ export default function GameScreen({ mode, onBack }: GameScreenProps) {
                 compatibilityThreshold: neatCompat,
             });
             setTimeout(() => game.start(), 80);
+        } else if (mode === "rl") {
+            const ppoMode = new PPOMode(game);
+            ppoModeRef.current = ppoMode;
+            ppoMode.onStatsUpdate = (stat) => {
+                setStats((prev) => [...prev, stat]);
+                setLatestStat(stat);
+                setHasBestModel(true);
+                setPpoMetrics({
+                    policyLoss: ppoMode.trainer?.lastPolicyLoss ?? 0,
+                    valueLoss: ppoMode.trainer?.lastValueLoss ?? 0,
+                    entropy: ppoMode.trainer?.lastEntropy ?? 0,
+                });
+            };
+            ppoMode.startTraining({
+                ...defaultPPOConfig(),
+                nAgents: ppoAgents,
+                learningRate: ppoLR,
+                clipEpsilon: ppoClip,
+            });
+            setTimeout(() => game.start(), 80);
         }
 
         setPhase("training");
-    }, [mode, gaPopulation, gaMutRate, gaCrossRate, gaElitism, neatPopulation, neatWeightMut, neatAddNode, neatAddConn, neatCompat]);
+    }, [mode, gaPopulation, gaMutRate, gaCrossRate, gaElitism, neatPopulation, neatWeightMut, neatAddNode, neatAddConn, neatCompat, ppoAgents, ppoLR, ppoClip]);
 
     const stopTraining = useCallback(() => {
         gaModeRef.current?.stopTraining();
         neatModeRef.current?.stopTraining();
+        ppoModeRef.current?.stopTraining();
         gameRef.current?.stop();
         // Reset dinos so the game is clean
         if (gameRef.current) {
@@ -206,12 +247,14 @@ export default function GameScreen({ mode, onBack }: GameScreenProps) {
         const game = gameRef.current;
         if (!game) return;
 
-        let brain: NeuralNetwork | Genome | null = null;
+        let brain: NeuralNetwork | Genome | PPOBrain | null = null;
 
         if (mode === "neural") {
             brain = gaModeRef.current?.bestModel ?? null;
         } else if (mode === "neat") {
             brain = neatModeRef.current?.bestGenome ?? null;
+        } else if (mode === "rl") {
+            brain = ppoModeRef.current?.trainer?.createInferenceAgent() ?? null;
         }
 
         if (!brain) {
@@ -246,6 +289,10 @@ export default function GameScreen({ mode, onBack }: GameScreenProps) {
             const genome = neatModeRef.current?.bestGenome;
             if (!genome) return alert("No genome to export.");
             downloadJSON(genome.toJSON(), `neat-genome-gen${stats.length}.json`);
+        } else if (mode === "rl") {
+            const trainer = ppoModeRef.current?.trainer;
+            if (!trainer) return alert("No model to export.");
+            downloadJSON(trainer.toJSON(), `ppo-model-ep${stats.length}.json`);
         }
     }, [mode, stats.length]);
 
@@ -284,6 +331,18 @@ export default function GameScreen({ mode, onBack }: GameScreenProps) {
                         neatModeRef.current.bestGenome = genome;
                         setBestGenomeViz(genome);
                         setHasBestModel(true);
+                    } else if (mode === "rl") {
+                        const trainer = PPOTrainer.fromJSON(data, {
+                            ...defaultPPOConfig(),
+                            nAgents: ppoAgents,
+                            learningRate: ppoLR,
+                            clipEpsilon: ppoClip,
+                        });
+                        if (!ppoModeRef.current) {
+                            ppoModeRef.current = new PPOMode(gameRef.current!);
+                        }
+                        ppoModeRef.current.trainer = trainer;
+                        setHasBestModel(true);
                     }
                 } catch (err) {
                     alert("Invalid model file.");
@@ -294,7 +353,7 @@ export default function GameScreen({ mode, onBack }: GameScreenProps) {
             // Reset so the same file can be re-selected
             e.target.value = "";
         },
-        [mode],
+        [mode, ppoAgents, ppoLR, ppoClip],
     );
 
     /* ── Back ── */
@@ -368,6 +427,30 @@ export default function GameScreen({ mode, onBack }: GameScreenProps) {
                         </div>
                     </div>
                 )}
+
+                {/* Right panel – PPO metrics */}
+                {mode === "rl" && (
+                    <div className="side-panel right-panel">
+                        <h4 className="panel-title">PPO Info</h4>
+                        <div className="stat-box" style={{ marginTop: 8 }}>
+                            {latestStat ? (
+                                <>
+                                    <div><b>Episode</b> {latestStat.generation}</div>
+                                    <div><b>Best</b> {ppoModeRef.current?.bestScoreAllTime.toFixed(1) ?? "—"}</div>
+                                    {ppoMetrics && (
+                                        <>
+                                            <div><b>P.Loss</b> {ppoMetrics.policyLoss.toFixed(4)}</div>
+                                            <div><b>V.Loss</b> {ppoMetrics.valueLoss.toFixed(4)}</div>
+                                            <div><b>Entropy</b> {ppoMetrics.entropy.toFixed(3)}</div>
+                                        </>
+                                    )}
+                                </>
+                            ) : (
+                                <div style={{ color: "#aaa", fontSize: 12 }}>Start training…</div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* ── Controls ── */}
@@ -427,6 +510,13 @@ export default function GameScreen({ mode, onBack }: GameScreenProps) {
                                 <label>Add Node <input type="number" value={neatAddNode} step={0.01} min={0} max={0.5} onChange={(e) => setNeatAddNode(+e.target.value)} disabled={phase !== "idle"} /></label>
                                 <label>Add Conn <input type="number" value={neatAddConn} step={0.01} min={0} max={0.5} onChange={(e) => setNeatAddConn(+e.target.value)} disabled={phase !== "idle"} /></label>
                                 <label>Compat Thresh <input type="number" value={neatCompat} step={0.1} min={0.5} max={10} onChange={(e) => setNeatCompat(+e.target.value)} disabled={phase !== "idle"} /></label>
+                            </>
+                        )}
+                        {mode === "rl" && (
+                            <>
+                                <label>Agents <input type="number" value={ppoAgents} min={5} max={100} onChange={(e) => setPpoAgents(+e.target.value)} disabled={phase !== "idle"} /></label>
+                                <label>Learning Rate <input type="number" value={ppoLR} step={0.0001} min={0.00001} max={0.01} onChange={(e) => setPpoLR(+e.target.value)} disabled={phase !== "idle"} /></label>
+                                <label>Clip ε <input type="number" value={ppoClip} step={0.05} min={0.05} max={0.5} onChange={(e) => setPpoClip(+e.target.value)} disabled={phase !== "idle"} /></label>
                             </>
                         )}
                     </div>
