@@ -1,4 +1,63 @@
+import { useEffect, useRef } from 'react';
+import { Game } from '../game';
+
 export const GameScreen = ({ mode, onBack } : { mode : string, onBack : () => void }) => {
+    const gameRef = useRef<Game | null>(null);
+
+    useEffect(() => {
+        const game = new Game();
+        gameRef.current = game;
+
+        let animFrame = 0;
+        let time = 0;
+
+        const render = () => {
+            time += 0.016;
+            game.clear();
+
+            // 3D perspective background with scrolling ties
+            game.drawBackground(time * 600);
+
+            // ── Obstacles (drawn first, further back) ──
+
+            // Train in right lane at depth 0.35
+            const trainDepth = 0.35;
+            const trainScale = game.getDepthScale(trainDepth);
+            const trainW = 120 * trainScale;
+            const trainH = 160 * trainScale;
+            const trainCX = game.getLaneX(2, trainDepth);
+            const trainY = game.getDepthY(trainDepth) - trainH;
+            game.drawTrain(trainCX - trainW / 2, trainY, trainW, trainH);
+
+            // Hurdle in left lane at depth 0.25
+            const hurdleDepth = 0.25;
+            const hurdleScale = game.getDepthScale(hurdleDepth);
+            const hurdleW = 130 * hurdleScale;
+            const hurdleH = 55 * hurdleScale;
+            const hurdleCX = game.getLaneX(0, hurdleDepth);
+            const hurdleY = game.getDepthY(hurdleDepth) - hurdleH;
+            game.drawHurdle(hurdleCX - hurdleW / 2, hurdleY, hurdleW, hurdleH);
+
+            // ── Player (center lane, close to camera) ──
+            const playerDepth = 0.05;
+            const playerScale = game.getDepthScale(playerDepth);
+            const playerW = 60 * playerScale;
+            const playerH = 110 * playerScale;
+            const playerCX = game.getLaneX(1, playerDepth);
+            const playerY = game.getDepthY(playerDepth) - playerH;
+            game.drawPlayer(playerCX - playerW / 2, playerY, playerW, playerH, time, false);
+
+            animFrame = requestAnimationFrame(render);
+        };
+
+        render();
+
+        return () => {
+            cancelAnimationFrame(animFrame);
+            gameRef.current = null;
+        };
+    }, []);
+
     return (
         <div className="flex flex-col items-center">
             {/* Top bar with back button, scores, and mode label */}
